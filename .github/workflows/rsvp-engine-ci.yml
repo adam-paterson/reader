@@ -1,0 +1,48 @@
+name: RSVP Engine CI
+
+on:
+  push:
+    paths:
+      - 'app/rsvp/**'
+      - '.github/workflows/rsvp-engine-ci.yml'
+  pull_request:
+    paths:
+      - 'app/rsvp/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run type check
+        run: npx tsc --noEmit
+      
+      - name: Run tests with coverage
+        run: npm run test:ci
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: rsvp-engine
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint

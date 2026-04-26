@@ -61,6 +61,16 @@ jest.mock("react-native-keyboard-controller", () => ({
   useKeyboardState: () => ({ isVisible: false }),
 }))
 
+// Mock Reanimated for RSVP engine tests
+jest.mock("react-native-reanimated", () => {
+  const Reanimated = require("react-native-reanimated/mock")
+  Reanimated.default.call = () => {}
+  return Reanimated
+})
+
+// Global test utilities for RSVP engine
+global.__TEST__ = true
+
 declare const tron // eslint-disable-line @typescript-eslint/no-unused-vars
 
 declare global {

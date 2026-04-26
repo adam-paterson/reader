@@ -19,6 +19,8 @@
     "align-deps": "npx expo install --fix",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
     "test:maestro": "maestro test -e MAESTRO_APP_ID=com.reader .maestro/flows",
     "adb": "adb reverse tcp:9090 tcp:9090 && adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9001 tcp:9001 && adb reverse tcp:8081 tcp:8081",
     "build:ios:sim": "eas build --profile development --platform ios --local",
