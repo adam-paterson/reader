@@ -1,0 +1,17 @@
+{
+  "name": "readrrr-browser-extension",
+  "version": "1.0.0",
+  "description": "Readrrr browser extension for one-click RSVP reading",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --dev",
+    "package": "npm run build && zip -r readrrr-extension.zip dist/"
+  },
+  "dependencies": {
+    "@jocmp/mercury-parser": "^2.2.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.0"
+  }
+}
