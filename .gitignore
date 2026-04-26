@@ -95,3 +95,9 @@ app-dependency-graph.png
 .beads/
 .opencode/
 .runtime/
+
+# Gas Town (added by gt)
+.claude/
+.logs/
+__pycache__/
+state.json

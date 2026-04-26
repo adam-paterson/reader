@@ -1,9 +1,13 @@
 # RSVP Engine Data Model Design
 
 > **Document ID**: READ-DATA-001  
-> **Status**: Draft  
+> **Status**: Complete (v2.0)  
 > **Date**: 2026-04-26  
-> **Related**: READ-001 (RSVP Core Engine)
+> **Related**: READ-001 (RSVP Core Engine), re-t2h (Cloud Sync)
+> 
+> **Changelog**:
+> - v2.0: Updated with Cloud Sync architecture (D1, R2, Cloudflare Workers)
+> - v1.0: Initial data model with MMKV/SQLite storage
 
 ---
 
@@ -83,24 +87,40 @@ interface RSVPReaderProps {
 
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│     User        │────▶│  ReadingSession  │◀────│    Document     │
+│   UserProfile   │────▶│  ReadingSession  │◀────│    Document     │
 ├─────────────────┤     ├──────────────────┤     ├─────────────────┤
 │ id: PK          │     │ id: PK           │     │ id: PK          │
-│ preferences: FK │     │ documentId: FK   │     │ title: string   │
-│ stats: FK       │     │ userId: FK       │     │ content: text   │
-└────────┬────────┘     │ startedAt: ts    │     │ wordCount: int  │
-         │              │ endedAt: ts      │     │ source: string  │
-         │              │ finalWPM: int    │     │ createdAt: ts   │
-         ▼              │ progress: %      │     │ tags: string[]  │
-┌─────────────────┐     └──────────────────┘     └─────────────────┘
-│ UserPreferences │
+│ supabaseId: idx │     │ documentId: FK   │     │ userId: FK      │
+│ email: string   │     │ userId: FK       │     │ title: string   │
+│ preferences: FK │     │ startedAt: ts    │     │ content: text │
+└────────┬────────┘     │ endedAt: ts        │     │ wordCount: int  │
+         │              │ wordsRead: int     │     │ source: string  │
+         │              │ finalWpm: int      │     │ createdAt: ts   │
+         │              │ progress: %        │     │ syncStatus: enum│
+         │              │ syncStatus: enum   │     │ version: int    │
+         │              └──────────────────┘     └────────┬────────┘
+         │                                               │
+         ▼                                               ▼
+┌─────────────────┐                              ┌─────────────────┐
+│ UserPreferences │                              │    Bookmark     │
+├─────────────────┤                              ├─────────────────┤
+│ defaultWpm: int │                              │ id: PK          │
+│ defaultChunk: int│                             │ documentId: FK  │
+│ theme: enum     │                              │ userId: FK      │
+│ orpEnabled: bool│                              │ position: int   │
+│ autoSync: bool  │                              │ text: string    │
+│ syncOnWifiOnly  │                              │ note: string    │
+└─────────────────┘                              │ syncStatus: enum│
+                                                 └─────────────────┘
+
+┌─────────────────┐
+│ SyncCheckpoint  │
 ├─────────────────┤
 │ id: PK          │
-│ defaultWPM: int │
-│ defaultChunk: int│
-│ theme: enum     │
-│ orpEnabled: bool│
-│ variableTiming: bool│
+│ userId: FK      │
+│ deviceId: string│
+│ timestamp: ts   │
+│ lastSequence: int
 └─────────────────┘
 ```
 
@@ -113,11 +133,20 @@ interface Document {
   /** UUID v4 primary key */
   id: string;
   
+  /** User ID for multi-user support */
+  userId: string;
+  
   /** Display title (auto-generated or user-defined) */
   title: string;
   
-  /** Full text content */
-  content: string;
+  /** Full text content (optional if contentUrl provided) */
+  content?: string;
+  
+  /** URL to content for large documents (R2 storage) */
+  contentUrl?: string;
+  
+  /** Local file path for offline access */
+  localPath?: string;
   
   /** Cached word count (denormalized for performance) */
   wordCount: number;
@@ -130,6 +159,9 @@ interface Document {
   
   /** Last modified timestamp */
   updatedAt: string;
+  
+  /** Soft delete timestamp */
+  deletedAt?: string;
   
   /** User-defined tags for organization */
   tags: string[];
@@ -145,7 +177,15 @@ interface Document {
   
   /** Completion status */
   status: 'unread' | 'reading' | 'completed' | 'archived';
+  
+  /** Sync state for cloud synchronization */
+  syncStatus: SyncStatus;
+  
+  /** Version for conflict resolution */
+  version: number;
 }
+
+type SyncStatus = 'pending' | 'syncing' | 'synced' | 'error' | 'conflict';
 
 // Validation Constraints
 type DocumentConstraints = {
@@ -165,6 +205,9 @@ interface ReadingSession {
   /** Reference to Document */
   documentId: string;
   
+  /** User ID for multi-user support */
+  userId: string;
+  
   /** Session start timestamp */
   startedAt: string;
   
@@ -182,6 +225,12 @@ interface ReadingSession {
   
   /** Average WPM during session */
   averageWPM: number;
+  
+  /** Final WPM at session end */
+  finalWpm: number;
+  
+  /** Progress percentage (0-1) */
+  progress: number;
   
   /** WPM settings used (may vary during session) */
   wpmHistory: Array<{
@@ -208,6 +257,9 @@ interface ReadingSession {
   
   /** Session was completed */
   completed: boolean;
+  
+  /** Sync state for cloud synchronization */
+  syncStatus: SyncStatus;
 }
 ```
 
@@ -215,11 +267,8 @@ interface ReadingSession {
 
 ```typescript
 interface UserPreferences {
-  /** Singleton record ID */
-  id: 'default';
-  
   /** Default reading speed (100-1000) */
-  defaultWPM: number;
+  defaultWpm: number;
   
   /** Default chunk size (1-3) */
   defaultChunkSize: number;
@@ -235,6 +284,12 @@ interface UserPreferences {
   
   /** ORP highlight color (hex) */
   orpColor: string;
+  
+  /** Enable automatic cloud sync */
+  autoSync: boolean;
+  
+  /** Sync only on WiFi */
+  syncOnWifiOnly: boolean;
   
   /** Font settings */
   font: {
@@ -267,7 +322,88 @@ interface UserPreferences {
 }
 ```
 
-#### 2.2.4 Reading Statistics (Aggregated)
+#### 2.2.4 Bookmark (Reading Position Marker)
+
+```typescript
+interface Bookmark {
+  /** UUID v4 primary key */
+  id: string;
+  
+  /** Reference to Document */
+  documentId: string;
+  
+  /** User ID for multi-user support */
+  userId: string;
+  
+  /** Word position in document */
+  position: number;
+  
+  /** Optional text snippet at bookmark */
+  text?: string;
+  
+  /** Optional user note */
+  note?: string;
+  
+  /** Creation timestamp */
+  createdAt: string;
+  
+  /** Last modified timestamp */
+  updatedAt: string;
+  
+  /** Sync state for cloud synchronization */
+  syncStatus: SyncStatus;
+}
+```
+
+#### 2.2.5 User Profile
+
+```typescript
+interface UserProfile {
+  /** UUID v4 primary key */
+  id: string;
+  
+  /** Email address */
+  email: string;
+  
+  /** Supabase authentication ID */
+  supabaseId: string;
+  
+  /** User preferences */
+  preferences: UserPreferences;
+  
+  /** Creation timestamp */
+  createdAt: string;
+  
+  /** Last modified timestamp */
+  updatedAt: string;
+}
+```
+
+#### 2.2.6 Sync Checkpoint
+
+```typescript
+interface SyncCheckpoint {
+  /** Checkpoint ID */
+  id: string;
+  
+  /** User ID */
+  userId: string;
+  
+  /** Device ID */
+  deviceId: string;
+  
+  /** Checkpoint timestamp */
+  timestamp: string;
+  
+  /** Document versions at checkpoint */
+  documentVersions: Record<string, number>;
+  
+  /** Last sequence number for incremental sync */
+  lastSequence: number;
+}
+```
+
+#### 2.2.7 Reading Statistics (Aggregated)
 
 ```typescript
 interface ReadingStatistics {
@@ -329,15 +465,47 @@ interface ReadingStatistics {
 
 | Format | Query Speed | Bundle Size | Native Support | Migration Ease | Recommendation |
 |--------|-------------|-------------|----------------|----------------|----------------|
-| **MMKV** | Excellent | 0KB | ✅ Native module | N/A | **Primary** for preferences |
-| **SQLite** | Excellent | ~500KB | ✅ expo-sqlite | Complex | Documents, sessions |
+| **MMKV** | Excellent | 0KB | ✅ Native module | N/A | **Primary** for preferences & metadata |
+| **FileSystem** | Good | 0KB | ✅ Built-in | Simple | **Large document content** |
+| **SQLite** | Excellent | ~500KB | ✅ expo-sqlite | Complex | *Not used - MMKV sufficient* |
 | **JSON Files** | Good | 0KB | ✅ Built-in | Simple | Backup/export |
-| **TOML** | Poor | ~50KB | ❌ Library needed | Simple | Config only |
-| **WatermelonDB** | Good | ~200KB | ✅ Third-party | Medium | If offline-sync needed |
+| **Cloudflare D1** | Excellent | N/A | ✅ HTTP API | N/A | **Cloud sync database** |
+| **Cloudflare R2** | Good | N/A | ✅ HTTP API | N/A | **Large content storage** |
+| **WatermelonDB** | Good | ~200KB | ✅ Third-party | Medium | Not needed - custom sync |
 | **Realm** | Excellent | ~4MB | ✅ Native module | Complex | Overkill for this use case |
 
 ### 3.2 Recommended Hybrid Strategy
 
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    STORAGE LAYERS                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  L1: MMKV (react-native-mmkv) - Fast Local Access           │
+│  ├── UserPreferences (singleton, <1KB)                      │
+│  ├── CurrentDocument (active reading state)                 │
+│  ├── ReadingStatistics (aggregated, daily)                    │
+│  ├── Documents list (metadata only)                         │
+│  ├── ReadingProgress (per-document)                       │
+│  └── Bookmarks (per-document)                               │
+│                                                             │
+│  L2: FileSystem (expo-file-system) - Large Content          │
+│  ├── Document content (large text files)                    │
+│  ├── Import cache (temporary during import)                 │
+│  └── Export bundles (JSON backups)                          │
+│                                                             │
+│  L3: Cloud (Cloudflare Workers + D1 + R2) - Sync            │
+│  ├── Documents (with contentUrl for large files)            │
+│  ├── ReadingSessions (analytics sync)                       │
+│  ├── Bookmarks (cross-device)                               │
+│  └── UserProfiles (authentication)                          │
+│                                                             │
+│  L4: Sync State (MMKV) - Offline-First Support            │
+│  ├── SyncCheckpoint (last sync state)                       │
+│  ├── PendingChanges (queue for sync)                        │
+│  └── ConflictResolution (pending conflicts)                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    STORAGE LAYERS                           │
@@ -361,76 +529,140 @@ interface ReadingStatistics {
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.3 SQLite Schema
+### 3.3 Cloud Sync Schema (Cloudflare D1)
 
 ```sql
--- Documents table
+-- Documents table (cloud sync)
 CREATE TABLE documents (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   title TEXT NOT NULL,
-  content TEXT NOT NULL,
+  content TEXT, -- Optional if contentUrl provided
+  content_url TEXT, -- R2 storage URL for large documents
   word_count INTEGER NOT NULL DEFAULT 0,
   source TEXT,
   created_at TEXT NOT NULL, -- ISO 8601
   updated_at TEXT NOT NULL,
+  deleted_at TEXT, -- Soft delete
   tags TEXT, -- JSON array
   difficulty REAL,
   estimated_read_time INTEGER,
   bookmark_position INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'unread' CHECK (status IN ('unread', 'reading', 'completed', 'archived'))
+  status TEXT DEFAULT 'unread' CHECK (status IN ('unread', 'reading', 'completed', 'archived')),
+  version INTEGER DEFAULT 1,
+  sync_status TEXT DEFAULT 'pending'
 );
 
--- Full-text search virtual table
-CREATE VIRTUAL TABLE documents_fts USING fts5(
-  title,
-  content,
-  content='documents',
-  content_rowid='id'
+-- Bookmarks table
+CREATE TABLE bookmarks (
+  id TEXT PRIMARY KEY,
+  document_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  text TEXT,
+  note TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  sync_status TEXT DEFAULT 'pending'
 );
 
 -- Reading sessions for analytics
 CREATE TABLE reading_sessions (
   id TEXT PRIMARY KEY,
-  document_id TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  document_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
   started_at TEXT NOT NULL,
   ended_at TEXT,
   start_position INTEGER NOT NULL,
   end_position INTEGER NOT NULL DEFAULT 0,
   words_read INTEGER NOT NULL DEFAULT 0,
   average_wpm INTEGER,
-  wpm_history TEXT, -- JSON array
-  pauses TEXT, -- JSON array
-  rewinds TEXT, -- JSON array
-  completion_percent REAL DEFAULT 0,
-  completed BOOLEAN DEFAULT 0
+  final_wpm INTEGER,
+  progress REAL DEFAULT 0,
+  sync_status TEXT DEFAULT 'pending'
+);
+
+-- User profiles
+CREATE TABLE user_profiles (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  supabase_id TEXT NOT NULL UNIQUE,
+  preferences TEXT, -- JSON
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+-- Sync checkpoints
+CREATE TABLE sync_checkpoints (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  device_id TEXT NOT NULL,
+  timestamp TEXT NOT NULL,
+  document_versions TEXT, -- JSON
+  last_sequence INTEGER DEFAULT 0
 );
 
 -- Indexes for performance
-CREATE INDEX idx_documents_status ON documents(status);
-CREATE INDEX idx_documents_created ON documents(created_at);
+CREATE INDEX idx_documents_user ON documents(user_id);
+CREATE INDEX idx_documents_status ON documents(user_id, status);
+CREATE INDEX idx_documents_sync ON documents(sync_status);
+CREATE INDEX idx_bookmarks_user ON bookmarks(user_id);
+CREATE INDEX idx_bookmarks_document ON bookmarks(document_id);
+CREATE INDEX idx_sessions_user ON reading_sessions(user_id);
 CREATE INDEX idx_sessions_document ON reading_sessions(document_id);
-CREATE INDEX idx_sessions_started ON reading_sessions(started_at);
-
--- Triggers for FTS sync
-CREATE TRIGGER documents_ai AFTER INSERT ON documents BEGIN
-  INSERT INTO documents_fts(rowid, title, content) VALUES (new.id, new.title, new.content);
-END;
-
-CREATE TRIGGER documents_ad AFTER DELETE ON documents BEGIN
-  INSERT INTO documents_fts(documents_fts, rowid, title, content) VALUES ('delete', old.id, old.title, old.content);
-END;
-
-CREATE TRIGGER documents_au AFTER UPDATE ON documents BEGIN
-  INSERT INTO documents_fts(documents_fts, rowid, title, content) VALUES ('delete', old.id, old.title, old.content);
-  INSERT INTO documents_fts(rowid, title, content) VALUES (new.id, new.title, new.content);
-END;
+CREATE INDEX idx_profiles_supabase ON user_profiles(supabase_id);
 ```
 
 ---
 
-## 4. Migration Strategy
+## 4. Sync Architecture
 
-### 4.1 Versioning
+### 4.1 Sync Flow
+
+```
+┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
+│   Mobile App    │◀───────▶│  Cloudflare      │◀───────▶│   Cloudflare    │
+│   (MMKV Store)  │  HTTP   │  Workers API     │  SQL    │   D1 Database   │
+└────────┬────────┘         └──────────────────┘         └─────────────────┘
+         │
+         │ Large Content
+         ▼
+┌─────────────────┐
+│   Cloudflare R2 │ (Object Storage)
+└─────────────────┘
+```
+
+### 4.2 Sync Conflict Resolution
+
+```typescript
+// Last-write-wins with version check
+interface SyncConflictResolver {
+  resolveDocument(local: Document, remote: Document): Document {
+    // Compare versions
+    if (local.version > remote.version) {
+      return local; // Local is newer
+    } else if (remote.version > local.version) {
+      return remote; // Remote is newer
+    } else {
+      // Same version - compare timestamps
+      return new Date(local.updatedAt) > new Date(remote.updatedAt) 
+        ? local 
+        : remote;
+    }
+  }
+}
+```
+
+### 4.3 Offline-First Strategy
+
+1. **Local writes always succeed** - Write to MMKV immediately
+2. **Sync queue** - Add to pending changes queue
+3. **Background sync** - Attempt sync when online
+4. **Conflict handling** - Automatic resolution with manual override option
+
+## 5. Migration Strategy
+
+### 5.1 Versioning
 
 ```typescript
 // Schema version tracking in MMKV
@@ -450,23 +682,20 @@ type Migration = {
 };
 ```
 
-### 4.2 Migration Implementations
+### 5.2 Migration Implementations
 
 ```typescript
-// Migration v1 → v2: Add SQLite documents
+// Migration v1 → v2: Add Document storage layer
 const migrateV1toV2: Migration = {
   from: 1,
   to: 2,
   run: async () => {
-    // 1. Create SQLite tables
-    const db = await SQLite.openDatabaseAsync('reader.db');
-    await db.execAsync(CREATE_DOCUMENTS_TABLE);
-    
-    // 2. Migrate existing MMKV text to Document
+    // 1. Migrate existing MMKV text to Document structure
     const existingText = MMKV.getString('Reader.text');
     if (existingText) {
       const doc: Document = {
         id: generateUUID(),
+        userId: 'default',
         title: 'Untitled Document',
         content: existingText,
         wordCount: existingText.split(/\s+/).length,
@@ -476,29 +705,50 @@ const migrateV1toV2: Migration = {
         bookmarkPosition: MMKV.getNumber('Reader.currentIndex') || 0,
         status: 'reading',
         estimatedReadTime: Math.ceil(existingText.split(/\s+/).length / 300 * 60),
+        syncStatus: 'pending',
+        version: 1,
       };
-      await insertDocument(db, doc);
+      // Save to MMKV documents list
+      documentStorage.upsertDocument(doc);
     }
     
-    // 3. Mark migration complete
+    // 2. Mark migration complete
     MMKV.set(SCHEMA_VERSION_KEY, 2);
   }
 };
 
-// Migration v2 → v3: Add reading sessions
+// Migration v2 → v3: Add sync support
 const migrateV2toV3: Migration = {
   from: 2,
   to: 3,
   run: async () => {
-    const db = await SQLite.openDatabaseAsync('reader.db');
-    await db.execAsync(CREATE_SESSIONS_TABLE);
-    await db.execAsync(CREATE_SESSIONS_INDEXES);
+    // 1. Add sync fields to existing documents
+    const documents = documentStorage.getDocuments();
+    const updatedDocs = documents.map(doc => ({
+      ...doc,
+      userId: doc.userId || 'default',
+      syncStatus: doc.syncStatus || 'pending',
+      version: doc.version || 1,
+    }));
+    documentStorage.saveDocuments(updatedDocs);
+    
+    // 2. Initialize sync checkpoint
+    const checkpoint: SyncCheckpoint = {
+      id: generateUUID(),
+      userId: 'default',
+      deviceId: getDeviceId(),
+      timestamp: new Date().toISOString(),
+      documentVersions: {},
+      lastSequence: 0,
+    };
+    storage.set('sync.checkpoint', JSON.stringify(checkpoint));
+    
     MMKV.set(SCHEMA_VERSION_KEY, 3);
   }
 };
 ```
 
-### 4.3 Backwards Compatibility
+### 5.3 Backwards Compatibility
 
 ```typescript
 // Fallback for reading current state
@@ -506,7 +756,7 @@ function getCurrentDocument(): Document | null {
   // Try new schema first
   const docId = MMKV.getString('Reader.currentDocumentId');
   if (docId) {
-    return getDocumentById(docId);
+    return documentStorage.getDocument(docId);
   }
   
   // Fallback to legacy MMKV
@@ -521,9 +771,9 @@ function getCurrentDocument(): Document | null {
 
 ---
 
-## 5. Data Lifecycle
+## 6. Data Lifecycle
 
-### 5.1 Document Lifecycle
+### 6.1 Document Lifecycle
 
 ```
 [Import/Creation]
@@ -542,10 +792,16 @@ function getCurrentDocument(): Document | null {
       │ [Manual restore]                  ▼
       │                            ┌─────────────┐
       └───────────────────────────▶│  COMPLETED  │
+                                    └─────────────┘
+                                         │
+                                         │ [User deletes]
+                                         ▼
+                                   ┌─────────────┐
+                                   │   DELETED   │ (soft delete)
                                    └─────────────┘
 ```
 
-### 5.2 Session Lifecycle
+### 6.2 Session Lifecycle
 
 ```typescript
 // Session state machine
@@ -568,15 +824,35 @@ const sessionTransitions: Record<SessionState, SessionState[]> = {
 };
 ```
 
-### 5.3 Data Retention Policies
+### 6.3 Sync Lifecycle
+
+```typescript
+// Sync state machine
+type SyncEntityState = 
+  | 'pending'    // Local changes waiting to sync
+  | 'syncing'    // Currently uploading/downloading
+  | 'synced'     // In sync with cloud
+  | 'error'      // Sync failed, will retry
+  | 'conflict';  // Manual resolution needed
+
+// Sync flow
+// pending → syncing → synced (success)
+// pending → syncing → error → pending (retry)
+// pending → syncing → conflict → resolved → syncing → synced
+```
+
+### 6.4 Data Retention Policies
 
 ```typescript
 interface RetentionPolicy {
   // Auto-archive unread documents after 30 days
   archiveUnreadDays: 30;
   
-  // Delete archived documents after 90 days
+  // Soft-delete archived documents after 90 days
   deleteArchivedDays: 90;
+  
+  // Hard delete after additional grace period (GDPR compliance)
+  permanentDeleteDays: 30;
   
   // Compress session data after 7 days (remove granular events)
   compressSessionsDays: 7;
@@ -586,75 +862,62 @@ interface RetentionPolicy {
   
   // Keep statistics forever (tiny data)
   keepStatistics: true;
+  
+  // Sync retention - keep offline changes for
+  syncRetentionDays: 30;
 }
 ```
 
 ---
 
-## 6. Persistence vs Ephemeral
+## 7. Persistence vs Ephemeral
 
-### 6.1 Persistence Matrix
+### 7.1 Persistence Matrix
 
-| Data | MMKV | SQLite | Ephemeral | Rationale |
-|------|------|--------|-----------|-----------|
-| User Preferences | ✅ | ❌ | ❌ | Small, frequent reads |
-| Current Document | ✅ (cache) | ✅ | ❌ | Must survive restarts |
-| Document Library | ❌ | ✅ | ❌ | Large, queryable |
-| Reading Session | ❌ | ✅ | ❌ | Analytics, permanent |
-| Tokenized Words | ❌ | ❌ | ✅ | Regenerated on load |
-| ORP Positions | ❌ | ❌ | ✅ | Computed from content |
-| Animation State | ❌ | ❌ | ✅ | Frame-by-frame only |
-| Word Timing | ❌ | ❌ | ✅ | Derived from config |
-
-### 6.2 Cache Invalidation Strategy
-
-```typescript
-interface CacheStrategy {
-  // Document content cache (avoid re-tokenization)
-  tokenizedWords: {
-    key: (docId: string) => `cache:tokens:${docId}`;
-    ttl: 300; // 5 minutes
-    invalidateOn: ['documentUpdated', 'preferencesChanged'];
-  };
-  
-  // ORP position cache
-  orpPositions: {
-    key: (word: string) => `cache:orp:${hash(word)}`;
-    ttl: 600; // 10 minutes
-    maxSize: 10000; // LRU eviction
-  };
-  
-  // Statistics aggregation
-  statsCache: {
-    key: 'cache:stats:daily';
-    ttl: 60; // 1 minute (frequently updated)
-  };
-}
-```
+| Data | MMKV | FileSystem | Cloud | Ephemeral | Rationale |
+|------|------|------------|-------|-----------|-----------|
+| User Preferences | ✅ | ❌ | ❌ | ❌ | Small, frequent reads |
+| User Profile | ✅ | ❌ | ✅ | ❌ | Synced, cached locally |
+| Current Document | ✅ | ❌ | ❌ | ❌ | Active reading state |
+| Document Metadata | ✅ | ❌ | ✅ | ❌ | Fast list display |
+| Document Content | ❌ | ✅ | ✅ (R2) | ❌ | Large files, cached |
+| Reading Session | ✅ | ❌ | ✅ | ❌ | Analytics, synced |
+| Bookmarks | ✅ | ❌ | ✅ | ❌ | Cross-device sync |
+| Sync State | ✅ | ❌ | ❌ | ❌ | Offline-first queue |
+| Tokenized Words | ❌ | ❌ | ❌ | ✅ | Regenerated on load |
+| ORP Positions | ❌ | ❌ | ❌ | ✅ | Computed from content |
+| Animation State | ❌ | ❌ | ❌ | ✅ | Frame-by-frame only |
+| Word Timing | ❌ | ❌ | ❌ | ✅ | Derived from config |
 
 ---
 
-## 7. Implementation Roadmap
+## 8. Implementation Roadmap
 
-### Phase 1: Foundation (Current Sprint)
-- [ ] Define TypeScript interfaces for all entities
-- [ ] Set up SQLite database with initial schema
-- [ ] Implement Document CRUD operations
-- [ ] Add schema migration framework
+### Phase 1: Foundation ✅
+- [x] Define TypeScript interfaces for all entities
+- [x] Set up MMKV storage with sync types
+- [x] Implement Document CRUD operations
+- [x] Add DocumentStorage service
 
-### Phase 2: Session Tracking
+### Phase 2: Cloud Sync ✅
+- [x] Create sync types with version tracking
+- [x] Implement Cloudflare Workers API
+- [x] Set up D1 database schema
+- [x] Add R2 storage for large content
+
+### Phase 3: Session Tracking 🔄
 - [ ] Create ReadingSession model
 - [ ] Implement session lifecycle management
 - [ ] Add analytics aggregation (daily/weekly)
 - [ ] Statistics dashboard queries
 
-### Phase 3: Advanced Features
-- [ ] Full-text search (FTS5)
+### Phase 4: Advanced Features
+- [ ] Document bookmarks
 - [ ] Document import/export (JSON backup)
-- [ ] Sync adapter (future: cloud backup)
+- [ ] Full-text search
 - [ ] Data retention job scheduler
 
-### Phase 4: Performance Optimization
+### Phase 5: Performance Optimization
 - [ ] Tokenization caching
 - [ ] Lazy document loading (pagination)
 - [ ] Session data compression
@@ -662,7 +925,7 @@ interface CacheStrategy {
 
 ---
 
-## 8. TypeScript Interface Definitions
+## 9. TypeScript Interface Definitions
 
 ```typescript
 // types/database.ts - Complete type definitions
@@ -684,36 +947,115 @@ export enum Theme {
   SYSTEM = 'system',
 }
 
+// Sync status enum
+export enum SyncStatus {
+  PENDING = 'pending',
+  SYNCING = 'syncing',
+  SYNCED = 'synced',
+  ERROR = 'error',
+  CONFLICT = 'conflict',
+}
+
 // Main interfaces
 export interface Document {
   id: DocumentId;
+  userId: string;
   title: string;
-  content: string;
+  content?: string;
+  contentUrl?: string;
+  localPath?: string;
   wordCount: number;
   source?: string;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string;
   tags: string[];
   difficulty?: number;
   estimatedReadTime: number;
   bookmarkPosition: number;
   status: DocumentStatus;
+  syncStatus: SyncStatus;
+  version: number;
 }
 
 export interface ReadingSession {
   id: SessionId;
   documentId: DocumentId;
+  userId: string;
   startedAt: string;
   endedAt?: string;
   startPosition: number;
   endPosition: number;
   wordsRead: number;
   averageWPM?: number;
+  finalWpm: number;
+  progress: number;
   wpmHistory: WPMEvent[];
   pauses: PauseEvent[];
   rewinds: RewindEvent[];
   completionPercent: number;
   completed: boolean;
+  syncStatus: SyncStatus;
+}
+
+export interface Bookmark {
+  id: string;
+  documentId: DocumentId;
+  userId: string;
+  position: number;
+  text?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+  syncStatus: SyncStatus;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  supabaseId: string;
+  preferences: UserPreferences;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserPreferences {
+  defaultWpm: number;
+  defaultChunkSize: number;
+  theme: Theme;
+  orpEnabled: boolean;
+  variableTimingEnabled: boolean;
+  orpColor: string;
+  autoSync: boolean;
+  syncOnWifiOnly: boolean;
+  font: {
+    family: 'system' | 'serif' | 'sans-serif' | 'dyslexic';
+    size: number;
+    weight: 'normal' | 'bold';
+  };
+  display: {
+    showProgressBar: boolean;
+    showWordCount: boolean;
+    showPercentage: boolean;
+    autoHideControls: boolean;
+    autoHideDelay: number;
+  };
+  gestures: {
+    tapToPause: boolean;
+    swipeToNavigate: boolean;
+    longPressForMenu: boolean;
+  };
+  timingOverrides?: Partial<TimingConfig>;
+  analyticsRetention: '30d' | '90d' | '1y' | 'forever';
+}
+
+export interface SyncCheckpoint {
+  id: string;
+  userId: string;
+  deviceId: string;
+  timestamp: string;
+  documentVersions: Record<string, number>;
+  lastSequence: number;
 }
 
 // Event types for session tracking
@@ -811,22 +1153,56 @@ async function getReadingPosition(
 
 ## 10. Security Considerations
 
-1. **No sensitive data**: RSVP Engine doesn't handle PII beyond reading preferences
-2. **Local-only by default**: All data stored on device
-3. **Optional encryption**: MMKV and SQLite support encryption at rest
-4. **Export sanitization**: Remove metadata when sharing documents
+1. **User data protection**: 
+   - Email stored in user profile (encrypted in transit and at rest)
+   - Supabase ID used for authentication, not stored directly
+   - Content URLs (R2) use signed URLs with expiration
+
+2. **Local storage security**:
+   - MMKV supports encryption at rest (optional)
+   - Document content stored in app-private directories
+   - No sensitive data in global storage
+
+3. **Sync security**:
+   - HTTPS for all cloud communication
+   - JWT tokens for API authentication
+   - Row-level security in D1 database
+   - Content URLs signed and time-limited
+
+4. **Data retention (GDPR)**:
+   - Soft delete for user data
+   - 30-day grace period before permanent deletion
+   - Export all user data on request
+   - Complete purge option available
+
+5. **Export sanitization**: Remove metadata when sharing documents
 
 ---
 
 ## Appendix A: Database Size Estimates
 
+### Local Storage (MMKV + FileSystem)
+
 | Data Type | Record Size | Max Records | Total Size |
 |-----------|-------------|-------------|------------|
-| Document (avg 5KB text) | 6 KB | 1,000 | 6 MB |
-| Reading Session | 2 KB | 10,000 | 20 MB |
-| Statistics (daily) | 0.1 KB | 3,650 (10yr) | 365 KB |
-| FTS Index | ~30% of content | - | 2 MB |
-| **Total** | - | - | **~30 MB** |
+| Document Metadata | 0.5 KB | 1,000 | 500 KB |
+| Document Content (FileSystem) | 5 KB avg | 1,000 | 5 MB |
+| Reading Session | 0.5 KB | 1,000 local | 500 KB |
+| Bookmarks | 0.2 KB | 500 | 100 KB |
+| Reading Statistics | 0.1 KB | 3,650 (10yr) | 365 KB |
+| Sync State & Queue | 10 KB | 1 | 10 KB |
+| User Preferences | 1 KB | 1 | 1 KB |
+| **Total Local** | - | - | **~6.5 MB** |
+
+### Cloud Storage (D1 + R2)
+
+| Data Type | Record Size | Max Records | Total Size |
+|-----------|-------------|-------------|------------|
+| Documents (D1 metadata) | 0.3 KB | Unlimited | Scalable |
+| Document Content (R2) | 5 KB avg | Unlimited | Scalable |
+| Reading Sessions (D1) | 0.3 KB | Unlimited | Scalable |
+| Bookmarks (D1) | 0.2 KB | Unlimited | Scalable |
+| User Profiles (D1) | 0.5 KB | 1 per user | Scalable |
 
 ---
 
@@ -838,5 +1214,7 @@ async function getReadingPosition(
 
 ---
 
-*Document Version: 1.0*  
-*Next Review: After Phase 1 implementation*
+*Document Version: 2.0*  
+*Status: Updated with Cloud Sync Architecture*  
+*Last Updated: 2026-04-26*  
+*Next Review: After Phase 3 completion*
