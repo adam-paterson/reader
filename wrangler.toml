@@ -1,0 +1,49 @@
+name = "readrrr-api"
+main = "workers/api/index.ts"
+compatibility_date = "2026-04-26"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables
+[vars]
+API_VERSION = "v1"
+
+# Secrets (set via wrangler secret put)
+# SUPABASE_JWT_SECRET
+
+# D1 Database
+[[d1_databases]]
+binding = "DB"
+database_name = "readrrr-prod"
+database_id = "your-database-id-here"
+
+# R2 Bucket
+[[r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "readrrr-documents"
+
+# KV Namespace
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your-kv-namespace-id-here"
+
+# Queue
+[[queues.producers]]
+binding = "IMPORT_QUEUE"
+queue = "readrrr-imports"
+
+[[queues.consumers]]
+queue = "readrrr-imports"
+max_batch_size = 10
+max_batch_timeout = 30
+
+# Environments
+[env.staging]
+name = "readrrr-api-staging"
+
+[env.staging.vars]
+API_VERSION = "v1-staging"
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "readrrr-staging"
+database_id = "your-staging-database-id"
