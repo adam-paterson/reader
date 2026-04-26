@@ -3,7 +3,7 @@ module.exports = {
   preset: "react-native",
   setupFilesAfterEnv: ["<rootDir>/test/setup.ts"],
   transformIgnorePatterns: [
-    "node_modules/(?!(react-native|@react-native|@react-navigation|expo.*|@expo.*|react-native-mmkv|react-native-reanimated)/)",
+    "node_modules/(?!(react-native|@react-native|@react-navigation|expo.*|@expo.*|react-native-mmkv|react-native-reanimated|react-native-worklets)/)",
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/app/$1",

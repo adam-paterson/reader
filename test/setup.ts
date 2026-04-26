@@ -63,9 +63,47 @@ jest.mock("react-native-keyboard-controller", () => ({
 
 // Mock Reanimated for RSVP engine tests
 jest.mock("react-native-reanimated", () => {
-  const Reanimated = require("react-native-reanimated/mock")
-  Reanimated.default.call = () => {}
-  return Reanimated
+  return {
+    __esModule: true,
+    default: {
+      View: ({ children, style }: { children: React.ReactNode; style?: any }) => children,
+      Text: ({ children }: { children: React.ReactNode }) => children,
+    },
+    useSharedValue: (initial: number) => ({ value: initial }),
+    useAnimatedStyle: (callback: () => any) => callback(),
+    withTiming: (value: number, _config?: any) => value,
+    withSpring: (value: number, _config?: any) => value,
+    Easing: {
+      ease: { value: "ease" },
+    },
+    withSequence: (...animations: any[]) => animations,
+    withDelay: (_delay: number, animation: any) => animation,
+    runOnJS: (fn: Function) => fn,
+    runOnUI: (fn: Function) => fn,
+    createAnimatedPropAdapter: (adapter: Function) => adapter,
+    makeMutable: (initial: number) => ({ value: initial }),
+    makeRemote: (initial: any) => initial,
+    isSharedValue: (value: any) => value && typeof value.value === "number",
+    isReanimated3: () => true,
+    enableLayoutAnimations: () => {},
+    configureLayoutAnimations: () => {},
+    configureProps: () => {},
+    addWhitelistedNativeProps: () => {},
+    addWhitelistedUIProps: () => {},
+    getViewProp: () => {},
+    measure: () => ({ x: 0, y: 0, width: 0, height: 0, pageX: 0, pageY: 0 }),
+    dispatchCommand: () => {},
+    scrollTo: () => {},
+    setGestureState: () => {},
+    setNativeProps: () => {},
+    useAnimatedGestureHandler: () => ({}),
+    useAnimatedProps: () => ({}),
+    useAnimatedReaction: () => {},
+    useAnimatedRef: () => ({ current: null }),
+    useAnimatedScrollHandler: () => ({}),
+    useDerivedValue: (callback: () => any) => ({ value: callback() }),
+    useWorkletCallback: (callback: Function) => callback,
+  }
 })
 
 // Global test utilities for RSVP engine
