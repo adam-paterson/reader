@@ -1,6 +1,6 @@
 /**
  * Sync Context
- * 
+ *
  * React context for cloud synchronization state and operations.
  * Provides sync status, pending changes, and conflict resolution.
  */
@@ -14,7 +14,16 @@ import {
   useEffect,
   useState,
 } from "react"
-import { syncEngine, SyncState, SyncConflict, SyncDocument, SyncBookmark, SyncReadingSession } from "@/services/sync"
+
+import {
+  syncEngine,
+  SyncState,
+  SyncConflict,
+  SyncDocument,
+  SyncBookmark,
+  SyncReadingSession,
+} from "@/services/sync"
+
 import { useAuth } from "./AuthContext"
 
 export interface SyncContextType {
@@ -35,7 +44,10 @@ export interface SyncContextType {
 
   // Document operations
   createDocument: (
-    document: Omit<SyncDocument, "id" | "userId" | "createdAt" | "updatedAt" | "version" | "syncStatus">,
+    document: Omit<
+      SyncDocument,
+      "id" | "userId" | "createdAt" | "updatedAt" | "version" | "syncStatus"
+    >,
   ) => Promise<SyncDocument>
   updateDocument: (document: SyncDocument, updates: Partial<SyncDocument>) => Promise<SyncDocument>
   deleteDocument: (document: SyncDocument) => Promise<void>
@@ -115,16 +127,24 @@ export const SyncProvider: FC<PropsWithChildren<SyncProviderProps>> = ({ childre
 
   // Document operations
   const createDocument = useCallback(
-    async (document: Omit<SyncDocument, "id" | "userId" | "createdAt" | "updatedAt" | "version" | "syncStatus">) => {
+    async (
+      document: Omit<
+        SyncDocument,
+        "id" | "userId" | "createdAt" | "updatedAt" | "version" | "syncStatus"
+      >,
+    ) => {
       if (!user?.id) throw new Error("User not authenticated")
       return syncEngine.createDocument(user.id, document)
     },
     [user],
   )
 
-  const updateDocument = useCallback(async (document: SyncDocument, updates: Partial<SyncDocument>) => {
-    return syncEngine.updateDocument(document, updates)
-  }, [])
+  const updateDocument = useCallback(
+    async (document: SyncDocument, updates: Partial<SyncDocument>) => {
+      return syncEngine.updateDocument(document, updates)
+    },
+    [],
+  )
 
   const deleteDocument = useCallback(async (document: SyncDocument) => {
     return syncEngine.deleteDocument(document)
@@ -132,16 +152,21 @@ export const SyncProvider: FC<PropsWithChildren<SyncProviderProps>> = ({ childre
 
   // Bookmark operations
   const createBookmark = useCallback(
-    async (bookmark: Omit<SyncBookmark, "id" | "userId" | "createdAt" | "updatedAt" | "syncStatus">) => {
+    async (
+      bookmark: Omit<SyncBookmark, "id" | "userId" | "createdAt" | "updatedAt" | "syncStatus">,
+    ) => {
       if (!user?.id) throw new Error("User not authenticated")
       return syncEngine.createBookmark(user.id, bookmark)
     },
     [user],
   )
 
-  const updateBookmark = useCallback(async (bookmark: SyncBookmark, updates: Partial<SyncBookmark>) => {
-    return syncEngine.updateBookmark(bookmark, updates)
-  }, [])
+  const updateBookmark = useCallback(
+    async (bookmark: SyncBookmark, updates: Partial<SyncBookmark>) => {
+      return syncEngine.updateBookmark(bookmark, updates)
+    },
+    [],
+  )
 
   const deleteBookmark = useCallback(async (bookmark: SyncBookmark) => {
     return syncEngine.deleteBookmark(bookmark)

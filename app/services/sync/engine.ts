@@ -1,12 +1,13 @@
 /**
  * Sync Engine
- * 
+ *
  * Core synchronization logic with offline support.
  * Manages sync queue, conflict resolution, and data consistency.
  */
 
-import { storage } from "@/utils/storage"
 import { cloudflareApi } from "@/services/cloudflare"
+import { storage } from "@/utils/storage"
+
 import type {
   SyncDocument,
   SyncBookmark,
@@ -16,7 +17,6 @@ import type {
   SyncPushPayload,
   SyncConflict,
   SyncState,
-  SyncStatus,
 } from "./types"
 
 // Storage keys
@@ -154,7 +154,10 @@ class SyncEngine {
 
   async createDocument(
     userId: string,
-    document: Omit<SyncDocument, "id" | "userId" | "createdAt" | "updatedAt" | "version" | "syncStatus">,
+    document: Omit<
+      SyncDocument,
+      "id" | "userId" | "createdAt" | "updatedAt" | "version" | "syncStatus"
+    >,
   ): Promise<SyncDocument> {
     const now = new Date().toISOString()
     const newDoc: SyncDocument = {
@@ -264,7 +267,10 @@ class SyncEngine {
     return newBookmark
   }
 
-  async updateBookmark(bookmark: SyncBookmark, updates: Partial<SyncBookmark>): Promise<SyncBookmark> {
+  async updateBookmark(
+    bookmark: SyncBookmark,
+    updates: Partial<SyncBookmark>,
+  ): Promise<SyncBookmark> {
     const now = new Date().toISOString()
     const updatedBookmark: SyncBookmark = {
       ...bookmark,
@@ -445,7 +451,9 @@ class SyncEngine {
   /**
    * Resolve conflicts
    */
-  async resolveConflicts(resolutions: SyncConflict[]): Promise<{ success: boolean; error?: string }> {
+  async resolveConflicts(
+    resolutions: SyncConflict[],
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const result = await cloudflareApi.resolveConflicts(resolutions)
 

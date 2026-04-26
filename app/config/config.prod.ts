@@ -8,7 +8,7 @@
  */
 export default {
   API_URL: "https://api.rss2json.com/v1/",
-  
+
   // Cloud Sync - Production
   // These should be overridden with actual values from environment variables
   SUPABASE_URL: process.env.SUPABASE_URL || "",

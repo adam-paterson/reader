@@ -1,6 +1,6 @@
 /**
  * Cloud Sync Types
- * 
+ *
  * Type definitions for cloud synchronization with Cloudflare Workers,
  * D1 database, and R2 storage.
  */

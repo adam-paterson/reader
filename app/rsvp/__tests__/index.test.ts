@@ -1,5 +1,12 @@
 // Test index.ts exports
-import { RSVPReader, WordDisplay, tokenizeWords, calculateORP, calculateWordDuration, createDefaultConfig } from "../index"
+import {
+  RSVPReader,
+  WordDisplay,
+  tokenizeWords,
+  calculateORP,
+  calculateWordDuration,
+  createDefaultConfig,
+} from "../index"
 
 describe("RSVP Module Exports", () => {
   it("should export RSVPReader", () => {

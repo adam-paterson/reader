@@ -1,6 +1,6 @@
 /**
  * Storage Services
- * 
+ *
  * Main exports for document storage and offline management.
  */
 

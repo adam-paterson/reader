@@ -1,6 +1,6 @@
 /**
  * Auth Context with Supabase Integration
- * 
+ *
  * Updated authentication context using Supabase Auth.
  * Provides email/password, magic link, and OAuth authentication.
  */
@@ -15,6 +15,7 @@ import {
   useMemo,
   useState,
 } from "react"
+
 import { supabaseAuth, User } from "@/services/supabase"
 import { syncEngine } from "@/services/sync"
 
@@ -24,7 +25,7 @@ export type AuthContextType = {
   user: User | null
   authEmail: string
   setAuthEmail: (email: string) => void
-  
+
   // Auth methods
   signUp: (email: string, password: string) => Promise<{ error?: string }>
   signIn: (email: string, password: string) => Promise<{ error?: string }>
@@ -33,7 +34,7 @@ export type AuthContextType = {
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error?: string }>
   updatePassword: (newPassword: string) => Promise<{ error?: string }>
-  
+
   // Legacy compatibility
   authToken?: string
   setAuthToken: (token?: string) => void
@@ -73,7 +74,7 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     void initAuth()
 
     // Subscribe to auth state changes
-    const unsubscribe = supabaseAuth.onAuthStateChange((event, session) => {
+    const unsubscribe = supabaseAuth.onAuthStateChange((event, _session) => {
       if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         void supabaseAuth.getUser().then(({ user: currentUser }) => {
           setUser(currentUser)
@@ -92,29 +93,38 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     return unsubscribe
   }, [])
 
-  const signUp = useCallback(async (email: string, password: string): Promise<{ error?: string }> => {
-    const { error } = await supabaseAuth.signUp(email, password)
-    return { error: error?.message }
-  }, [])
+  const signUp = useCallback(
+    async (email: string, password: string): Promise<{ error?: string }> => {
+      const { error } = await supabaseAuth.signUp(email, password)
+      return { error: error?.message }
+    },
+    [],
+  )
 
-  const signIn = useCallback(async (email: string, password: string): Promise<{ error?: string }> => {
-    const { user: currentUser, error } = await supabaseAuth.signIn(email, password)
-    if (error) {
-      return { error: error.message }
-    }
-    setUser(currentUser)
-    return {}
-  }, [])
+  const signIn = useCallback(
+    async (email: string, password: string): Promise<{ error?: string }> => {
+      const { user: currentUser, error } = await supabaseAuth.signIn(email, password)
+      if (error) {
+        return { error: error.message }
+      }
+      setUser(currentUser)
+      return {}
+    },
+    [],
+  )
 
   const signInWithMagicLink = useCallback(async (email: string): Promise<{ error?: string }> => {
     const { error } = await supabaseAuth.signInWithMagicLink(email)
     return { error: error?.message }
   }, [])
 
-  const signInWithProvider = useCallback(async (provider: "google" | "apple" | "github"): Promise<{ error?: string }> => {
-    const { error } = await supabaseAuth.signInWithProvider(provider)
-    return { error: error?.message }
-  }, [])
+  const signInWithProvider = useCallback(
+    async (provider: "google" | "apple" | "github"): Promise<{ error?: string }> => {
+      const { error } = await supabaseAuth.signInWithProvider(provider)
+      return { error: error?.message }
+    },
+    [],
+  )
 
   const signOut = useCallback(async (): Promise<void> => {
     await supabaseAuth.signOut()
@@ -161,7 +171,7 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     user,
     authEmail,
     setAuthEmail,
-    
+
     // Auth methods
     signUp,
     signIn,
@@ -170,7 +180,7 @@ export const AuthProvider: FC<PropsWithChildren<AuthProviderProps>> = ({ childre
     signOut,
     resetPassword,
     updatePassword,
-    
+
     // Legacy compatibility
     authToken,
     setAuthToken,

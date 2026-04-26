@@ -1,14 +1,14 @@
 /**
  * Readrrr Browser Extension - Mercury Parser Wrapper
- * 
+ *
  * This is a lightweight wrapper around Mercury Parser for browser extension use.
  * In production, this would bundle the @jocmp/mercury-parser package.
- * 
+ *
  * For MVP, we include a minimal parsing implementation.
  */
 
-(function(global) {
-  'use strict';
+;(function (global) {
+  "use strict"
 
   const Mercury = {
     /**
@@ -18,19 +18,19 @@
      * @returns {Promise<Object>} - Parsed article data
      */
     async parse(url, options = {}) {
-      const { html, contentType = 'html' } = options;
+      const { html, contentType = "html" } = options
 
       try {
         // If HTML is provided, parse it directly
         // Otherwise, fetch the URL
-        const content = html || await this.fetchPage(url);
-        
+        const content = html || (await this.fetchPage(url))
+
         // Parse the content
-        const result = this.extractArticle(content, url);
-        
+        const result = this.extractArticle(content, url)
+
         // Convert content type if needed
-        if (contentType === 'text') {
-          result.content = this.htmlToText(result.content);
+        if (contentType === "text") {
+          result.content = this.htmlToText(result.content)
         }
 
         return {
@@ -41,11 +41,11 @@
           url: url,
           word_count: this.countWords(result.content),
           date_published: result.datePublished,
-          domain: this.extractDomain(url)
-        };
+          domain: this.extractDomain(url),
+        }
       } catch (error) {
-        console.error('Mercury parse error:', error);
-        throw error;
+        console.error("Mercury parse error:", error)
+        throw error
       }
     },
 
@@ -53,42 +53,42 @@
      * Fetch page content
      */
     async fetchPage(url) {
-      const response = await fetch(url);
+      const response = await fetch(url)
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      return await response.text();
+      return await response.text()
     },
 
     /**
      * Extract article data from HTML
      */
     extractArticle(html, url) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(html, "text/html")
 
       // Extract title
-      const title = this.extractTitle(doc);
+      const title = this.extractTitle(doc)
 
       // Extract author
-      const author = this.extractAuthor(doc);
+      const author = this.extractAuthor(doc)
 
       // Extract date published
-      const datePublished = this.extractDatePublished(doc);
+      const datePublished = this.extractDatePublished(doc)
 
       // Extract main content
-      const content = this.extractContent(doc);
+      const content = this.extractContent(doc)
 
       // Generate excerpt
-      const excerpt = this.generateExcerpt(content);
+      const excerpt = this.generateExcerpt(content)
 
       return {
         title,
         author,
         content,
         excerpt,
-        datePublished
-      };
+        datePublished,
+      }
     },
 
     /**
@@ -96,19 +96,19 @@
      */
     extractTitle(doc) {
       // Try Open Graph title first
-      const ogTitle = doc.querySelector('meta[property="og:title"]');
+      const ogTitle = doc.querySelector('meta[property="og:title"]')
       if (ogTitle) {
-        return ogTitle.getAttribute('content') || '';
+        return ogTitle.getAttribute("content") || ""
       }
 
       // Try article title
-      const articleTitle = doc.querySelector('meta[property="article:title"]');
+      const articleTitle = doc.querySelector('meta[property="article:title"]')
       if (articleTitle) {
-        return articleTitle.getAttribute('content') || '';
+        return articleTitle.getAttribute("content") || ""
       }
 
       // Use document title
-      return doc.title || 'Untitled';
+      return doc.title || "Untitled"
     },
 
     /**
@@ -119,24 +119,24 @@
         'meta[name="author"]',
         'meta[property="article:author"]',
         'meta[property="og:author"]',
-        '.author',
-        '.byline',
+        ".author",
+        ".byline",
         '[rel="author"]',
-        '.writer',
-        '.post-author'
-      ];
+        ".writer",
+        ".post-author",
+      ]
 
       for (const selector of selectors) {
-        const el = doc.querySelector(selector);
+        const el = doc.querySelector(selector)
         if (el) {
-          const content = el.getAttribute('content');
-          const text = el.textContent;
-          if (content) return content;
-          if (text) return text.trim();
+          const content = el.getAttribute("content")
+          const text = el.textContent
+          if (content) return content
+          if (text) return text.trim()
         }
       }
 
-      return '';
+      return ""
     },
 
     /**
@@ -148,23 +148,22 @@
         'meta[name="datePublished"]',
         'meta[name="publish_date"]',
         'meta[property="og:published_time"]',
-        'time[datetime]',
-        '.published',
-        '.date-published',
-        '.post-date'
-      ];
+        "time[datetime]",
+        ".published",
+        ".date-published",
+        ".post-date",
+      ]
 
       for (const selector of selectors) {
-        const el = doc.querySelector(selector);
+        const el = doc.querySelector(selector)
         if (el) {
-          const content = el.getAttribute('content') ||
-                         el.getAttribute('datetime') ||
-                         el.textContent;
-          if (content) return content.trim();
+          const content =
+            el.getAttribute("content") || el.getAttribute("datetime") || el.textContent
+          if (content) return content.trim()
         }
       }
 
-      return '';
+      return ""
     },
 
     /**
@@ -173,100 +172,97 @@
     extractContent(doc) {
       // Content selectors in order of preference
       const selectors = [
-        'article',
+        "article",
         '[role="main"]',
-        'main',
-        '.article',
-        '.post-content',
-        '.entry-content',
-        '.content',
-        '#content',
-        '.post',
-        '.story',
-        '.entry'
-      ];
+        "main",
+        ".article",
+        ".post-content",
+        ".entry-content",
+        ".content",
+        "#content",
+        ".post",
+        ".story",
+        ".entry",
+      ]
 
-      let contentElement = null;
+      let contentElement = null
 
       for (const selector of selectors) {
-        contentElement = doc.querySelector(selector);
-        if (contentElement) break;
+        contentElement = doc.querySelector(selector)
+        if (contentElement) break
       }
 
       // Fallback to body
       if (!contentElement) {
-        contentElement = doc.body;
+        contentElement = doc.body
       }
 
       if (!contentElement) {
-        return '';
+        return ""
       }
 
       // Clone to avoid modifying original
-      const clone = contentElement.cloneNode(true);
+      const clone = contentElement.cloneNode(true)
 
       // Remove unwanted elements
       const unwanted = clone.querySelectorAll(
-        'script, style, nav, header, footer, aside, .sidebar, .comments, ' +
-        '.related, .ads, .advertisement, .social, .share, iframe, button, form, ' +
-        'input, select, textarea, .newsletter, .subscribe'
-      );
-      unwanted.forEach(el => el.remove());
+        "script, style, nav, header, footer, aside, .sidebar, .comments, " +
+          ".related, .ads, .advertisement, .social, .share, iframe, button, form, " +
+          "input, select, textarea, .newsletter, .subscribe",
+      )
+      unwanted.forEach((el) => el.remove())
 
-      return clone.innerHTML || '';
+      return clone.innerHTML || ""
     },
 
     /**
      * Generate excerpt from content
      */
     generateExcerpt(content, maxLength = 200) {
-      const text = this.htmlToText(content);
-      if (text.length <= maxLength) return text;
-      
+      const text = this.htmlToText(content)
+      if (text.length <= maxLength) return text
+
       // Try to end at a sentence
-      const truncated = text.substring(0, maxLength);
-      const lastSentence = truncated.match(/^.*[.!?]/);
-      
+      const truncated = text.substring(0, maxLength)
+      const lastSentence = truncated.match(/^.*[.!?]/)
+
       if (lastSentence) {
-        return lastSentence[0];
+        return lastSentence[0]
       }
-      
+
       // Fallback to word boundary
-      const lastSpace = truncated.lastIndexOf(' ');
+      const lastSpace = truncated.lastIndexOf(" ")
       if (lastSpace > 0) {
-        return truncated.substring(0, lastSpace) + '...';
+        return truncated.substring(0, lastSpace) + "..."
       }
-      
-      return truncated + '...';
+
+      return truncated + "..."
     },
 
     /**
      * Convert HTML to plain text
      */
     htmlToText(html) {
-      if (!html) return '';
+      if (!html) return ""
 
       // Create temporary element
-      const temp = document.createElement('div');
-      temp.innerHTML = html;
+      const temp = document.createElement("div")
+      temp.innerHTML = html
 
       // Get text content
-      let text = temp.textContent || temp.innerText || '';
+      let text = temp.textContent || temp.innerText || ""
 
       // Clean up whitespace
-      return text
-        .replace(/\s+/g, ' ')
-        .replace(/\n+/g, '\n')
-        .trim();
+      return text.replace(/\s+/g, " ").replace(/\n+/g, "\n").trim()
     },
 
     /**
      * Count words in text
      */
     countWords(text) {
-      if (!text) return 0;
-      const words = text.trim().split(/\s+/);
-      return words.filter(w => w.length > 0).length;
+      if (!text) return 0
+      const words = text.trim().split(/\s+/)
+      return words.filter((w) => w.length > 0).length
     },
 
     /**
@@ -274,15 +270,14 @@
      */
     extractDomain(url) {
       try {
-        const urlObj = new URL(url);
-        return urlObj.hostname;
+        const urlObj = new URL(url)
+        return urlObj.hostname
       } catch {
-        return '';
+        return ""
       }
-    }
-  };
+    },
+  }
 
   // Expose to global scope
-  global.Mercury = Mercury;
-
-})(typeof self !== 'undefined' ? self : this);
+  global.Mercury = Mercury
+})(typeof self !== "undefined" ? self : this)
