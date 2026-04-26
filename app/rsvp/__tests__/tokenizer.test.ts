@@ -1,4 +1,4 @@
-import { tokenizeWords, WordToken } from "../tokenizer"
+import { tokenizeWords } from "../tokenizer"
 
 describe("tokenizeWords", () => {
   it("should tokenize simple sentence", () => {

@@ -1,4 +1,4 @@
-import { calculateORP, ORPPosition } from "../orp"
+import { calculateORP } from "../orp"
 
 describe("calculateORP", () => {
   it("should calculate ORP at 35% for 'Hello'", () => {

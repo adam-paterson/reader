@@ -1,7 +1,6 @@
-import React from "react"
 import { render } from "@testing-library/react-native"
+
 import { WordDisplay } from "../WordDisplay"
-import { calculateORP } from "../orp"
 
 describe("WordDisplay", () => {
   it("should render a simple word", () => {

@@ -1,22 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef, memo } from "react"
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  Dimensions,
-  ViewStyle,
-} from "react-native"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
+// eslint-disable-next-line no-restricted-imports
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native"
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
   Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from "react-native-reanimated"
-import { WordDisplay } from "./WordDisplay"
-import { tokenizeWords, WordToken } from "./tokenizer"
+
 import { calculateWordDuration, createDefaultConfig } from "./timing"
+import { tokenizeWords, WordToken } from "./tokenizer"
+import { WordDisplay } from "./WordDisplay"
 
 /**
  * Props for RSVPReader component
@@ -157,11 +152,7 @@ export const RSVPReader = memo(function RSVPReader({
     <View style={[styles.container, style]} testID={`${testID}-container`}>
       {/* Word Display with animation */}
       <Animated.View style={[styles.wordContainer, animatedStyle]} testID="rsvp-word-container">
-        <WordDisplay
-          word={currentWord}
-          fontSize={fontSize}
-          testID="rsvp-word-display"
-        />
+        <WordDisplay word={currentWord} fontSize={fontSize} testID="rsvp-word-display" />
       </Animated.View>
 
       {/* Progress indicator */}
@@ -193,57 +184,58 @@ export const RSVPReader = memo(function RSVPReader({
   )
 })
 
+/* eslint-disable react-native/no-color-literals, react-native/sort-styles */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    flex: 1,
     justifyContent: "center",
     padding: 20,
-    backgroundColor: "#FFFFFF",
-  },
-  wordContainer: {
-    minHeight: 120,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  progressContainer: {
-    width: SCREEN_WIDTH * 0.8,
-    marginTop: 40,
-  },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 2,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: "#FF6B6B",
-    borderRadius: 2,
-  },
-  progressText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: "#666666",
-    textAlign: "center",
-  },
-  controlsContainer: {
-    marginTop: 30,
-    flexDirection: "row",
-    gap: 20,
   },
   controlButton: {
-    padding: 15,
+    alignItems: "center",
     backgroundColor: "#F0F0F0",
     borderRadius: 30,
     minWidth: 60,
-    alignItems: "center",
+    padding: 15,
   },
   controlButtonText: {
     fontSize: 24,
   },
+  controlsContainer: {
+    flexDirection: "row",
+    gap: 20,
+    marginTop: 30,
+  },
   emptyText: {
-    fontSize: 16,
     color: "#999999",
+    fontSize: 16,
+  },
+  progressBarBackground: {
+    backgroundColor: "#E0E0E0",
+    borderRadius: 2,
+    height: 4,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    backgroundColor: "#FF6B6B",
+    borderRadius: 2,
+    height: "100%",
+  },
+  progressContainer: {
+    marginTop: 40,
+    width: SCREEN_WIDTH * 0.8,
+  },
+  progressText: {
+    color: "#666666",
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: "center",
+  },
+  wordContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 120,
   },
 })

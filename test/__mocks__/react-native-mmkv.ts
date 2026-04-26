@@ -39,7 +39,9 @@ export function useMMKVString(key: string): [string, (value: string | undefined)
 }
 
 export function useMMKVNumber(key: string): [number, (value: number | undefined) => void] {
-  const [value, setValue] = require("react").useState<number>(() => (globalMockStorage.get(key) as number) || 0)
+  const [value, setValue] = require("react").useState<number>(
+    () => (globalMockStorage.get(key) as number) || 0,
+  )
   const setStoredValue = require("react").useCallback(
     (newValue: number | undefined) => {
       if (newValue === undefined) {

@@ -35,7 +35,7 @@ export const ReaderScreen: FC<ReaderScreenProps> = function ReaderScreen({ navig
     if (isPlaying) {
       const intervalMs = (60 * 1000) / speed
       intervalRef.current = setInterval(() => {
-        setCurrentWordIndex(prev => {
+        setCurrentWordIndex((prev) => {
           const nextIndex = prev + chunkSize
           if (nextIndex >= words.length) {
             setIsPlaying(false)
@@ -118,12 +118,7 @@ export const ReaderScreen: FC<ReaderScreenProps> = function ReaderScreen({ navig
 
         {/* RSVP Display Area */}
         <View style={themed($displayContainer)}>
-          <Text
-            testID="rsvp-word-display"
-            preset="heading"
-            size="xxl"
-            style={themed($wordDisplay)}
-          >
+          <Text testID="rsvp-word-display" preset="heading" size="xxl" style={themed($wordDisplay)}>
             {currentWord || "Done!"}
           </Text>
         </View>

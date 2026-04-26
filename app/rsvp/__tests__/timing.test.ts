@@ -1,7 +1,7 @@
-import { calculateWordDuration, TimingConfig, createDefaultConfig } from "../timing"
+import { calculateWordDuration, createDefaultConfig } from "../timing"
 
 describe("calculateWordDuration", () => {
-  const defaultConfig: TimingConfig = {
+  const defaultConfig = {
     baseWPM: 300,
     punctuationDelays: {
       period: 300,

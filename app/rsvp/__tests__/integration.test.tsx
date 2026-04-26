@@ -1,9 +1,9 @@
-import React from "react"
 import { render, waitFor } from "@testing-library/react-native"
-import { RSVPReader } from "../RSVPReader"
-import { tokenizeWords } from "../tokenizer"
+
 import { calculateORP } from "../orp"
+import { RSVPReader } from "../RSVPReader"
 import { calculateWordDuration, createDefaultConfig } from "../timing"
+import { tokenizeWords } from "../tokenizer"
 
 /**
  * Integration tests for the complete RSVP engine workflow.
@@ -17,9 +17,7 @@ describe("RSVP Engine Integration", () => {
       const tokens = tokenizeWords(sampleText)
       expect(tokens[0].text).toBe("The")
 
-      const { getByTestId } = render(
-        <RSVPReader text={sampleText} wpm={300} autoStart={false} />
-      )
+      const { getByTestId } = render(<RSVPReader text={sampleText} wpm={300} autoStart={false} />)
 
       expect(getByTestId("rsvp-word-display")).toBeTruthy()
     })

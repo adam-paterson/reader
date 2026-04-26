@@ -1,7 +1,6 @@
-import React from "react"
-import { render, fireEvent, waitFor } from "@testing-library/react-native"
+import { render } from "@testing-library/react-native"
+
 import { RSVPReader, RSVPReaderProps } from "../RSVPReader"
-import { Text } from "react-native"
 
 // Mock timer for animation tests
 jest.useFakeTimers()

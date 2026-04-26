@@ -1,5 +1,7 @@
-import React, { memo } from "react"
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from "react-native"
+import { memo } from "react"
+// eslint-disable-next-line no-restricted-imports
+import { StyleSheet, Text, View } from "react-native"
+
 import { calculateORP } from "./orp"
 
 /**
@@ -35,6 +37,7 @@ export const WordDisplay = memo(function WordDisplay({
   if (!word || word.length === 0) {
     return (
       <View style={styles.container} testID={testID}>
+        {/* eslint-disable-next-line react-native/no-color-literals */}
         <Text style={[styles.text, { fontSize, color: textColor }]}> </Text>
       </View>
     )
@@ -51,7 +54,10 @@ export const WordDisplay = memo(function WordDisplay({
         <Text style={{ color: textColor }} testID="word-prefix">
           {prefix}
         </Text>
-        <Text style={[styles.orpChar, { color: orpColor, fontSize: fontSize * 1.1 }]} testID="orp-character">
+        <Text
+          style={[styles.orpChar, { color: orpColor, fontSize: fontSize * 1.1 }]}
+          testID="orp-character"
+        >
           {orpChar}
         </Text>
         <Text style={{ color: textColor }} testID="word-suffix">
@@ -62,20 +68,21 @@ export const WordDisplay = memo(function WordDisplay({
   )
 })
 
+// eslint-disable-next-line react-native/no-color-literals
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
     minHeight: 80,
   },
-  wordRow: {
-    flexDirection: "row",
-    fontWeight: "500",
-  },
   orpChar: {
     fontWeight: "700",
   },
   text: {
+    fontWeight: "500",
+  },
+  wordRow: {
+    flexDirection: "row",
     fontWeight: "500",
   },
 })

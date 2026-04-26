@@ -19,9 +19,6 @@ export interface TimingConfig {
   }
 }
 
-/** Default base delay in milliseconds (for 300 WPM) */
-const DEFAULT_BASE_DELAY_MS = 200
-
 /**
  * Calculate the display duration for a word in RSVP mode.
  * Considers word length, punctuation, and WPM settings.

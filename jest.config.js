@@ -12,11 +12,7 @@ module.exports = {
     "\\.(ttf|otf|woff|woff2|eot)$": "<rootDir>/test/mockFile.ts",
   },
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
-  collectCoverageFrom: [
-    "app/rsvp/**/*.ts",
-    "app/rsvp/**/*.tsx",
-    "!app/rsvp/**/*.d.ts",
-  ],
+  collectCoverageFrom: ["app/rsvp/**/*.ts", "app/rsvp/**/*.tsx", "!app/rsvp/**/*.d.ts"],
   coverageThreshold: {
     global: {
       branches: 90,
@@ -25,8 +21,5 @@ module.exports = {
       statements: 90,
     },
   },
-  testMatch: [
-    "**/__tests__/**/*.test.ts",
-    "**/__tests__/**/*.test.tsx",
-  ],
+  testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
 }

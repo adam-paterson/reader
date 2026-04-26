@@ -1,6 +1,6 @@
-import { fireEvent, render } from "@testing-library/react-native"
 import { NavigationContainer } from "@react-navigation/native"
 import { createNativeStackNavigator } from "@react-navigation/native-stack"
+import { fireEvent, render } from "@testing-library/react-native"
 
 import { ReaderProvider } from "../../app/context/ReaderContext"
 import { TextInputScreen } from "../../app/screens/TextInputScreen"

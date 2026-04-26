@@ -1,4 +1,12 @@
-import { createContext, FC, PropsWithChildren, useCallback, useContext, useMemo, useState } from "react"
+import {
+  createContext,
+  FC,
+  PropsWithChildren,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react"
 import { useMMKVNumber, useMMKVString } from "react-native-mmkv"
 
 export type ReaderContextType = {
@@ -30,7 +38,10 @@ export const ReaderProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const words = useMemo(() => {
     if (!text) return []
-    return text.trim().split(/\s+/).filter(w => w.length > 0)
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 0)
   }, [text])
 
   const wordCount = words.length
@@ -46,36 +57,62 @@ export const ReaderProvider: FC<PropsWithChildren> = ({ children }) => {
     return currentWordIndex / wordCount
   }, [currentWordIndex, wordCount])
 
-  const setText = useCallback((newText: string) => {
-    setTextStorage(newText)
-    setCurrentWordIndex(0)
-    setIsPlaying(false)
-  }, [setTextStorage])
+  const setText = useCallback(
+    (newText: string) => {
+      setTextStorage(newText)
+      setCurrentWordIndex(0)
+      setIsPlaying(false)
+    },
+    [setTextStorage],
+  )
 
-  const setSpeed = useCallback((newSpeed: number) => {
-    setSpeedStorage(newSpeed)
-  }, [setSpeedStorage])
+  const setSpeed = useCallback(
+    (newSpeed: number) => {
+      setSpeedStorage(newSpeed)
+    },
+    [setSpeedStorage],
+  )
 
-  const setChunkSize = useCallback((newSize: number) => {
-    setChunkSizeStorage(Math.max(1, Math.min(3, newSize)))
-  }, [setChunkSizeStorage])
+  const setChunkSize = useCallback(
+    (newSize: number) => {
+      setChunkSizeStorage(Math.max(1, Math.min(3, newSize)))
+    },
+    [setChunkSizeStorage],
+  )
 
-  const value = useMemo(() => ({
-    text: text || "",
-    setText,
-    words,
-    speed: speed || 300,
-    setSpeed,
-    currentWordIndex,
-    setCurrentWordIndex,
-    isPlaying,
-    setIsPlaying,
-    chunkSize: chunkSize || 1,
-    setChunkSize,
-    progress,
-    currentWord,
-    wordCount,
-  }), [text, setText, words, speed, setSpeed, currentWordIndex, setCurrentWordIndex, isPlaying, chunkSize, setChunkSize, progress, currentWord, wordCount])
+  const value = useMemo(
+    () => ({
+      text: text || "",
+      setText,
+      words,
+      speed: speed || 300,
+      setSpeed,
+      currentWordIndex,
+      setCurrentWordIndex,
+      isPlaying,
+      setIsPlaying,
+      chunkSize: chunkSize || 1,
+      setChunkSize,
+      progress,
+      currentWord,
+      wordCount,
+    }),
+    [
+      text,
+      setText,
+      words,
+      speed,
+      setSpeed,
+      currentWordIndex,
+      setCurrentWordIndex,
+      isPlaying,
+      chunkSize,
+      setChunkSize,
+      progress,
+      currentWord,
+      wordCount,
+    ],
+  )
 
   return <ReaderContext.Provider value={value}>{children}</ReaderContext.Provider>
 }
