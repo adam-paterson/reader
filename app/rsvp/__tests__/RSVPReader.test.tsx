@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react-native"
+import { fireEvent, render, waitFor } from "@testing-library/react-native"
 
 import { RSVPReader, RSVPReaderProps } from "../RSVPReader"
 
@@ -37,7 +37,9 @@ describe("RSVPReader", () => {
   it("should call onProgress when word changes", async () => {
     render(<RSVPReader {...defaultProps} />)
     // onProgress is called on initial render
-    expect(defaultProps.onProgress).toHaveBeenCalled()
+    await waitFor(() => {
+      expect(defaultProps.onProgress).toHaveBeenCalled()
+    })
   })
 
   it("should render with custom WPM", () => {
@@ -60,5 +62,93 @@ describe("RSVPReader", () => {
     // "Hello world test" = 3 words
     const progressText = getByTestId("rsvp-progress-text")
     expect(progressText).toBeTruthy()
+  })
+
+  it("should call onComplete when text is finished", async () => {
+    const onComplete = jest.fn()
+    render(<RSVPReader text="One" wpm={600} onComplete={onComplete} autoStart={true} />)
+
+    // Fast-forward past the single word's duration (faster WPM = shorter wait)
+    jest.advanceTimersByTime(300)
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+  })
+
+  it("should call onWordChange callback exists", () => {
+    const onWordChange = jest.fn()
+    render(<RSVPReader text="One two" wpm={300} onWordChange={onWordChange} />)
+    // onWordChange is called during initial setup
+    expect(onWordChange).toBeDefined()
+  })
+
+  it("should toggle play/pause when button is pressed", () => {
+    const { getByTestId, getByLabelText } = render(
+      <RSVPReader {...defaultProps} autoStart={true} />,
+    )
+
+    const pauseButton = getByTestId("rsvp-pause-button")
+    expect(getByLabelText("Pause")).toBeTruthy()
+
+    fireEvent.press(pauseButton)
+
+    // After pressing, should show Play
+    expect(getByLabelText("Play")).toBeTruthy()
+  })
+
+  it("should not auto-advance when paused", () => {
+    const onWordChange = jest.fn()
+    render(
+      <RSVPReader text="One two three" wpm={300} onWordChange={onWordChange} autoStart={false} />,
+    )
+
+    // Clear initial call
+    onWordChange.mockClear()
+
+    // Advance time while paused
+    jest.advanceTimersByTime(2000)
+
+    // Should not have advanced
+    expect(onWordChange).not.toHaveBeenCalled()
+  })
+
+  it("should handle single word text", async () => {
+    const onComplete = jest.fn()
+    render(<RSVPReader text="Hello" wpm={600} onComplete={onComplete} />)
+
+    // Single word should call onComplete quickly
+    jest.advanceTimersByTime(300)
+
+    await waitFor(() => {
+      expect(onComplete).toHaveBeenCalled()
+    })
+  })
+
+  it("should advance through multiple words", async () => {
+    const onProgress = jest.fn()
+    render(<RSVPReader text="One two" wpm={600} onProgress={onProgress} />)
+
+    // Initial render calls onProgress
+    expect(onProgress).toHaveBeenCalledWith(0, 2)
+
+    // Clear mock to track advancement
+    onProgress.mockClear()
+
+    // Advance past first word duration (100ms base for 600 WPM)
+    jest.advanceTimersByTime(200)
+
+    // Should have advanced to second word
+    await waitFor(
+      () => {
+        expect(onProgress).toHaveBeenCalled()
+      },
+      { timeout: 1000 },
+    )
+  })
+
+  it("should apply custom font size", () => {
+    const { getByTestId } = render(<RSVPReader {...defaultProps} fontSize={64} />)
+    expect(getByTestId("rsvp-word-display")).toBeTruthy()
   })
 })

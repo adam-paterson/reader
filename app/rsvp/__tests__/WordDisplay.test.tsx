@@ -50,4 +50,9 @@ describe("WordDisplay", () => {
     const orpChar = getByTestId("orp-character")
     expect(orpChar).toBeTruthy()
   })
+
+  it("should handle empty word", () => {
+    const { getByTestId } = render(<WordDisplay word="" />)
+    expect(getByTestId("word-display")).toBeTruthy()
+  })
 })
