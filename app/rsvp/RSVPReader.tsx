@@ -34,6 +34,8 @@ export interface RSVPReaderProps {
   onWordChange?: (word: string, index: number) => void
   /** Custom font size (default: 48) */
   fontSize?: number
+  /** Auto-start reading on mount (default: true) */
+  autoStart?: boolean
   /** Custom styles for container */
   style?: ViewStyle
   /** Test ID for testing */
@@ -61,6 +63,7 @@ export const RSVPReader = memo(function RSVPReader({
   onProgress,
   onWordChange,
   fontSize = 48,
+  autoStart = true,
   style,
   testID = "rsvp-reader",
 }: RSVPReaderProps) {
@@ -70,7 +73,7 @@ export const RSVPReader = memo(function RSVPReader({
 
   // State
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isPlaying, setIsPlaying] = useState(true)
+  const [isPlaying, setIsPlaying] = useState(autoStart)
 
   // Animation values
   const opacity = useSharedValue(1)
