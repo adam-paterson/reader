@@ -1,12 +1,12 @@
 /**
  * Document Storage
- * 
+ *
  * Offline-first document storage with local caching and cloud sync.
  * Uses MMKV for fast local storage with sync engine integration.
  */
 
+import type { SyncDocument, SyncBookmark } from "@/services/sync"
 import { storage } from "@/utils/storage"
-import type { SyncDocument, SyncBookmark, SyncReadingSession } from "@/services/sync"
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -79,7 +79,7 @@ class DocumentStorage {
   removeDocument(id: string): void {
     const documents = this.getDocuments().filter((d) => d.id !== id)
     this.saveDocuments(documents)
-    
+
     // Also remove content
     storage.delete(STORAGE_KEYS.documentContent(id))
     storage.delete(STORAGE_KEYS.bookmarks(id))
@@ -152,17 +152,15 @@ class DocumentStorage {
    */
   getReadingStats(): ReadingStats {
     const data = storage.getString(STORAGE_KEYS.readingStats)
-    return (
-      data
-        ? (JSON.parse(data) as ReadingStats)
-        : {
-            totalWordsRead: 0,
-            totalTimeMinutes: 0,
-            sessionsCount: 0,
-            streakDays: 0,
-            lastReadDate: "",
-          }
-    )
+    return data
+      ? (JSON.parse(data) as ReadingStats)
+      : {
+          totalWordsRead: 0,
+          totalTimeMinutes: 0,
+          sessionsCount: 0,
+          streakDays: 0,
+          lastReadDate: "",
+        }
   }
 
   /**
@@ -171,11 +169,11 @@ class DocumentStorage {
   updateReadingStats(wordsRead: number, minutes: number): void {
     const stats = this.getReadingStats()
     const today = new Date().toISOString().split("T")[0]
-    
+
     // Check if this is a new day for streak calculation
     const lastRead = stats.lastReadDate
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0]
-    
+
     if (lastRead === yesterday) {
       // Continued streak
       stats.streakDays += 1
@@ -183,12 +181,12 @@ class DocumentStorage {
       // Streak broken or first time
       stats.streakDays = 1
     }
-    
+
     stats.totalWordsRead += wordsRead
     stats.totalTimeMinutes += minutes
     stats.sessionsCount += 1
     stats.lastReadDate = today
-    
+
     storage.set(STORAGE_KEYS.readingStats, JSON.stringify(stats))
   }
 
@@ -198,15 +196,15 @@ class DocumentStorage {
   searchDocuments(query: string): SyncDocument[] {
     const documents = this.getDocuments()
     const lowerQuery = query.toLowerCase()
-    
+
     return documents.filter((doc) => {
       const titleMatch = doc.title.toLowerCase().includes(lowerQuery)
       const sourceMatch = doc.source?.toLowerCase().includes(lowerQuery) ?? false
-      
+
       // Optionally search content (expensive, do only if needed)
       // const content = this.getDocumentContent(doc.id)
       // const contentMatch = content?.toLowerCase().includes(lowerQuery) ?? false
-      
+
       return titleMatch || sourceMatch
     })
   }
@@ -216,11 +214,11 @@ class DocumentStorage {
    */
   clear(): void {
     const documentIds = this.getDocuments().map((d) => d.id)
-    
+
     // Clear document list
     storage.delete(STORAGE_KEYS.documents)
     storage.delete(STORAGE_KEYS.readingStats)
-    
+
     // Clear all document-specific data
     documentIds.forEach((id) => {
       storage.delete(STORAGE_KEYS.documentContent(id))
@@ -234,7 +232,7 @@ class DocumentStorage {
    */
   getStats(): { documentCount: number; totalSize: number } {
     const documents = this.getDocuments()
-    
+
     // Rough estimate of storage size
     let totalSize = 0
     documents.forEach((doc) => {
@@ -243,7 +241,7 @@ class DocumentStorage {
         totalSize += content.length * 2 // UTF-16 estimate
       }
     })
-    
+
     return {
       documentCount: documents.length,
       totalSize,

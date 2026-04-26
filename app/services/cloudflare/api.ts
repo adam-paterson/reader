@@ -1,13 +1,15 @@
 /**
  * Cloudflare API Client
- * 
+ *
  * Client for communicating with Cloudflare Workers API.
  * Handles documents, bookmarks, reading sessions, and user data.
  */
 
 import { ApiResponse, ApisauceInstance, create } from "apisauce"
-import { supabaseAuth } from "@/services/supabase"
+
 import Config from "@/config"
+import { supabaseAuth } from "@/services/supabase"
+
 import { GeneralApiProblem, getGeneralApiProblem } from "../api/apiProblem"
 import type {
   SyncDocument,
@@ -44,7 +46,7 @@ export class CloudflareApi {
       baseURL: this.config.url,
       timeout: this.config.timeout,
       headers: {
-        Accept: "application/json",
+        "Accept": "application/json",
         "Content-Type": "application/json",
       },
     })
@@ -78,7 +80,10 @@ export class CloudflareApi {
   async updateUserProfile(
     profile: Partial<UserProfile>,
   ): Promise<{ kind: "ok"; profile: UserProfile } | GeneralApiProblem> {
-    const response: ApiResponse<UserProfile> = await this.apisauce.patch("/api/user/profile", profile)
+    const response: ApiResponse<UserProfile> = await this.apisauce.patch(
+      "/api/user/profile",
+      profile,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -115,7 +120,8 @@ export class CloudflareApi {
   // ==================== Documents ====================
 
   async getDocuments(): Promise<{ kind: "ok"; documents: SyncDocument[] } | GeneralApiProblem> {
-    const response: ApiResponse<{ documents: SyncDocument[] }> = await this.apisauce.get("/api/documents")
+    const response: ApiResponse<{ documents: SyncDocument[] }> =
+      await this.apisauce.get("/api/documents")
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -146,7 +152,10 @@ export class CloudflareApi {
     id: string,
     updates: Partial<SyncDocument>,
   ): Promise<{ kind: "ok"; document: SyncDocument } | GeneralApiProblem> {
-    const response: ApiResponse<SyncDocument> = await this.apisauce.patch(`/api/documents/${id}`, updates)
+    const response: ApiResponse<SyncDocument> = await this.apisauce.patch(
+      `/api/documents/${id}`,
+      updates,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -171,7 +180,9 @@ export class CloudflareApi {
     return { kind: "ok" }
   }
 
-  async getDocumentContent(id: string): Promise<{ kind: "ok"; content: string; url?: string } | GeneralApiProblem> {
+  async getDocumentContent(
+    id: string,
+  ): Promise<{ kind: "ok"; content: string; url?: string } | GeneralApiProblem> {
     const response: ApiResponse<{ content: string; url?: string }> = await this.apisauce.get(
       `/api/documents/${id}/content`,
     )
@@ -192,9 +203,12 @@ export class CloudflareApi {
     id: string,
     content: string,
   ): Promise<{ kind: "ok"; url: string } | GeneralApiProblem> {
-    const response: ApiResponse<{ url: string }> = await this.apisauce.post(`/api/documents/${id}/content`, {
-      content,
-    })
+    const response: ApiResponse<{ url: string }> = await this.apisauce.post(
+      `/api/documents/${id}/content`,
+      {
+        content,
+      },
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -210,9 +224,14 @@ export class CloudflareApi {
 
   // ==================== Bookmarks ====================
 
-  async getBookmarks(documentId?: string): Promise<{ kind: "ok"; bookmarks: SyncBookmark[] } | GeneralApiProblem> {
+  async getBookmarks(
+    documentId?: string,
+  ): Promise<{ kind: "ok"; bookmarks: SyncBookmark[] } | GeneralApiProblem> {
     const params = documentId ? { documentId } : {}
-    const response: ApiResponse<{ bookmarks: SyncBookmark[] }> = await this.apisauce.get("/api/bookmarks", params)
+    const response: ApiResponse<{ bookmarks: SyncBookmark[] }> = await this.apisauce.get(
+      "/api/bookmarks",
+      params,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -243,7 +262,10 @@ export class CloudflareApi {
     id: string,
     updates: Partial<SyncBookmark>,
   ): Promise<{ kind: "ok"; bookmark: SyncBookmark } | GeneralApiProblem> {
-    const response: ApiResponse<SyncBookmark> = await this.apisauce.patch(`/api/bookmarks/${id}`, updates)
+    const response: ApiResponse<SyncBookmark> = await this.apisauce.patch(
+      `/api/bookmarks/${id}`,
+      updates,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -274,7 +296,10 @@ export class CloudflareApi {
     documentId?: string,
   ): Promise<{ kind: "ok"; sessions: SyncReadingSession[] } | GeneralApiProblem> {
     const params = documentId ? { documentId } : {}
-    const response: ApiResponse<{ sessions: SyncReadingSession[] }> = await this.apisauce.get("/api/sessions", params)
+    const response: ApiResponse<{ sessions: SyncReadingSession[] }> = await this.apisauce.get(
+      "/api/sessions",
+      params,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -287,7 +312,10 @@ export class CloudflareApi {
   async createReadingSession(
     session: Omit<SyncReadingSession, "id" | "userId">,
   ): Promise<{ kind: "ok"; session: SyncReadingSession } | GeneralApiProblem> {
-    const response: ApiResponse<SyncReadingSession> = await this.apisauce.post("/api/sessions", session)
+    const response: ApiResponse<SyncReadingSession> = await this.apisauce.post(
+      "/api/sessions",
+      session,
+    )
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)
@@ -326,11 +354,11 @@ export class CloudflareApi {
 
   async pushChanges(
     payload: SyncPushPayload,
-  ): Promise<{ kind: "ok"; checkpoint: SyncCheckpoint; conflicts: SyncConflict[] } | GeneralApiProblem> {
-    const response: ApiResponse<{ checkpoint: SyncCheckpoint; conflicts: SyncConflict[] }> = await this.apisauce.post(
-      "/api/sync/push",
-      payload,
-    )
+  ): Promise<
+    { kind: "ok"; checkpoint: SyncCheckpoint; conflicts: SyncConflict[] } | GeneralApiProblem
+  > {
+    const response: ApiResponse<{ checkpoint: SyncCheckpoint; conflicts: SyncConflict[] }> =
+      await this.apisauce.post("/api/sync/push", payload)
 
     if (!response.ok) {
       const problem = getGeneralApiProblem(response)

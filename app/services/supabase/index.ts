@@ -1,6 +1,6 @@
 /**
  * Supabase Client Setup
- * 
+ *
  * Main Supabase client configuration and exports.
  */
 

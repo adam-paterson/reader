@@ -1,13 +1,14 @@
 /**
  * Supabase Auth Service
- * 
+ *
  * Handles authentication using Supabase Auth with 50K free MAU.
  * Provides email/password, magic link, and OAuth providers.
  */
 
 import { createClient, SupabaseClient, User, AuthError } from "@supabase/supabase-js"
-import { storage } from "@/utils/storage"
+
 import Config from "@/config"
+import { storage } from "@/utils/storage"
 
 const SUPABASE_URL = Config.SUPABASE_URL || ""
 const SUPABASE_ANON_KEY = Config.SUPABASE_ANON_KEY || ""
@@ -62,7 +63,10 @@ class SupabaseAuthService {
   /**
    * Sign up with email and password
    */
-  async signUp(email: string, password: string): Promise<{ user: User | null; error: AuthError | null }> {
+  async signUp(
+    email: string,
+    password: string,
+  ): Promise<{ user: User | null; error: AuthError | null }> {
     const client = this.getClient()
     const { data, error } = await client.auth.signUp({
       email,
@@ -79,7 +83,10 @@ class SupabaseAuthService {
   /**
    * Sign in with email and password
    */
-  async signIn(email: string, password: string): Promise<{ user: User | null; error: AuthError | null }> {
+  async signIn(
+    email: string,
+    password: string,
+  ): Promise<{ user: User | null; error: AuthError | null }> {
     const client = this.getClient()
     const { data, error } = await client.auth.signInWithPassword({
       email,
@@ -111,7 +118,9 @@ class SupabaseAuthService {
   /**
    * Sign in with OAuth provider
    */
-  async signInWithProvider(provider: "google" | "apple" | "github"): Promise<{ error: AuthError | null }> {
+  async signInWithProvider(
+    provider: "google" | "apple" | "github",
+  ): Promise<{ error: AuthError | null }> {
     const client = this.getClient()
     const { error } = await client.auth.signInWithOAuth({
       provider,

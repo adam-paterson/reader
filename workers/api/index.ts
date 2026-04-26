@@ -1,6 +1,6 @@
 /**
  * Cloudflare Worker - Core API
- * 
+ *
  * Main entry point for Cloudflare Workers API.
  * Handles authentication, document management, and sync operations.
  */
@@ -74,7 +74,7 @@ async function verifyAuth(request: Request, env: Env): Promise<User | null> {
     // For Supabase JWT verification in Cloudflare Workers
     // We need to use the JWT secret to verify
     const secret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET)
-    
+
     const { payload } = await jwtVerify(token, secret, {
       algorithms: ["HS256"],
     })
@@ -195,7 +195,7 @@ export default {
 async function handleUserProfile(request: Request, env: Env, user: User): Promise<Response> {
   if (request.method === "GET") {
     const result = await env.DB.prepare(
-      "SELECT id, email, created_at, updated_at FROM users WHERE id = ?"
+      "SELECT id, email, created_at, updated_at FROM users WHERE id = ?",
     )
       .bind(user.id)
       .first()
@@ -203,7 +203,7 @@ async function handleUserProfile(request: Request, env: Env, user: User): Promis
     if (!result) {
       // Create user if doesn't exist
       await env.DB.prepare(
-        "INSERT INTO users (id, email, supabase_id, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))"
+        "INSERT INTO users (id, email, supabase_id, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))",
       )
         .bind(user.id, user.email, user.supabaseId)
         .run()
@@ -236,13 +236,18 @@ async function handleUserProfile(request: Request, env: Env, user: User): Promis
 }
 
 // Documents handlers
-async function handleDocuments(request: Request, env: Env, user: User, path: string): Promise<Response> {
+async function handleDocuments(
+  request: Request,
+  env: Env,
+  user: User,
+  path: string,
+): Promise<Response> {
   const docId = path.split("/")[3]
 
   if (request.method === "GET" && !docId) {
     // List documents
     const { results } = await env.DB.prepare(
-      "SELECT id, title, word_count, source, created_at, updated_at, version FROM documents WHERE user_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC"
+      "SELECT id, title, word_count, source, created_at, updated_at, version FROM documents WHERE user_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC",
     )
       .bind(user.id)
       .all()
@@ -257,28 +262,37 @@ async function handleDocuments(request: Request, env: Env, user: User, path: str
     const now = new Date().toISOString()
 
     await env.DB.prepare(
-      "INSERT INTO documents (id, user_id, title, word_count, source, created_at, updated_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
+      "INSERT INTO documents (id, user_id, title, word_count, source, created_at, updated_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, 1)",
     )
-      .bind(id, user.id, data.title || "Untitled", data.wordCount || 0, data.source || null, now, now)
+      .bind(
+        id,
+        user.id,
+        data.title || "Untitled",
+        data.wordCount || 0,
+        data.source || null,
+        now,
+        now,
+      )
       .run()
 
-    return jsonResponse({
-      id,
-      user_id: user.id,
-      title: data.title,
-      word_count: data.wordCount,
-      source: data.source,
-      created_at: now,
-      updated_at: now,
-      version: 1,
-    }, 201)
+    return jsonResponse(
+      {
+        id,
+        user_id: user.id,
+        title: data.title,
+        word_count: data.wordCount,
+        source: data.source,
+        created_at: now,
+        updated_at: now,
+        version: 1,
+      },
+      201,
+    )
   }
 
   if (request.method === "GET" && docId) {
     // Get single document
-    const result = await env.DB.prepare(
-      "SELECT * FROM documents WHERE id = ? AND user_id = ?"
-    )
+    const result = await env.DB.prepare("SELECT * FROM documents WHERE id = ? AND user_id = ?")
       .bind(docId, user.id)
       .first()
 
@@ -295,7 +309,7 @@ async function handleDocuments(request: Request, env: Env, user: User, path: str
     const now = new Date().toISOString()
 
     await env.DB.prepare(
-      "UPDATE documents SET title = ?, word_count = ?, source = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?"
+      "UPDATE documents SET title = ?, word_count = ?, source = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?",
     )
       .bind(
         updates.title || "Untitled",
@@ -303,7 +317,7 @@ async function handleDocuments(request: Request, env: Env, user: User, path: str
         updates.source || null,
         now,
         docId,
-        user.id
+        user.id,
       )
       .run()
 
@@ -315,7 +329,7 @@ async function handleDocuments(request: Request, env: Env, user: User, path: str
     const now = new Date().toISOString()
 
     await env.DB.prepare(
-      "UPDATE documents SET deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?"
+      "UPDATE documents SET deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?",
     )
       .bind(now, now, docId, user.id)
       .run()
@@ -327,7 +341,12 @@ async function handleDocuments(request: Request, env: Env, user: User, path: str
 }
 
 // Bookmarks handlers
-async function handleBookmarks(request: Request, env: Env, user: User, path: string): Promise<Response> {
+async function handleBookmarks(
+  request: Request,
+  env: Env,
+  user: User,
+  path: string,
+): Promise<Response> {
   const bookmarkId = path.split("/")[3]
 
   if (request.method === "GET" && !bookmarkId) {
@@ -335,7 +354,7 @@ async function handleBookmarks(request: Request, env: Env, user: User, path: str
     const documentId = url.searchParams.get("documentId")
 
     let query = "SELECT * FROM bookmarks WHERE user_id = ?"
-    let params: (string | null)[] = [user.id]
+    const params: (string | null)[] = [user.id]
 
     if (documentId) {
       query += " AND document_id = ?"
@@ -357,9 +376,18 @@ async function handleBookmarks(request: Request, env: Env, user: User, path: str
     const now = new Date().toISOString()
 
     await env.DB.prepare(
-      "INSERT INTO bookmarks (id, user_id, document_id, position, text, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO bookmarks (id, user_id, document_id, position, text, note, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-      .bind(id, user.id, data.documentId, data.position, data.text || null, data.note || null, now, now)
+      .bind(
+        id,
+        user.id,
+        data.documentId,
+        data.position,
+        data.text || null,
+        data.note || null,
+        now,
+        now,
+      )
       .run()
 
     return jsonResponse({ id, user_id: user.id, ...data, created_at: now, updated_at: now }, 201)
@@ -369,7 +397,12 @@ async function handleBookmarks(request: Request, env: Env, user: User, path: str
 }
 
 // Sessions handlers
-async function handleSessions(request: Request, env: Env, user: User, path: string): Promise<Response> {
+async function handleSessions(
+  request: Request,
+  env: Env,
+  user: User,
+  path: string,
+): Promise<Response> {
   const sessionId = path.split("/")[3]
 
   if (request.method === "GET" && !sessionId) {
@@ -377,7 +410,7 @@ async function handleSessions(request: Request, env: Env, user: User, path: stri
     const documentId = url.searchParams.get("documentId")
 
     let query = "SELECT * FROM reading_sessions WHERE user_id = ?"
-    let params: (string | null)[] = [user.id]
+    const params: (string | null)[] = [user.id]
 
     if (documentId) {
       query += " AND document_id = ?"
@@ -398,7 +431,7 @@ async function handleSessions(request: Request, env: Env, user: User, path: stri
     const id = crypto.randomUUID()
 
     await env.DB.prepare(
-      "INSERT INTO reading_sessions (id, user_id, document_id, started_at, ended_at, words_read, final_wpm, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO reading_sessions (id, user_id, document_id, started_at, ended_at, words_read, final_wpm, progress) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
       .bind(
         id,
@@ -408,7 +441,7 @@ async function handleSessions(request: Request, env: Env, user: User, path: stri
         data.endedAt || null,
         data.wordsRead || 0,
         data.finalWpm || 300,
-        data.progress || 0
+        data.progress || 0,
       )
       .run()
 
@@ -429,19 +462,19 @@ async function handleSyncPull(request: Request, env: Env, user: User): Promise<R
 
   // Get changes since checkpoint
   const { results: documents } = await env.DB.prepare(
-    "SELECT * FROM documents WHERE user_id = ? AND updated_at > ? ORDER BY updated_at LIMIT ?"
+    "SELECT * FROM documents WHERE user_id = ? AND updated_at > ? ORDER BY updated_at LIMIT ?",
   )
     .bind(user.id, checkpoint?.timestamp || "1970-01-01", limit)
     .all()
 
   const { results: bookmarks } = await env.DB.prepare(
-    "SELECT * FROM bookmarks WHERE user_id = ? AND updated_at > ? ORDER BY updated_at LIMIT ?"
+    "SELECT * FROM bookmarks WHERE user_id = ? AND updated_at > ? ORDER BY updated_at LIMIT ?",
   )
     .bind(user.id, checkpoint?.timestamp || "1970-01-01", limit)
     .all()
 
   const { results: sessions } = await env.DB.prepare(
-    "SELECT * FROM reading_sessions WHERE user_id = ? AND started_at > ? ORDER BY started_at LIMIT ?"
+    "SELECT * FROM reading_sessions WHERE user_id = ? AND started_at > ? ORDER BY started_at LIMIT ?",
   )
     .bind(user.id, checkpoint?.timestamp || "1970-01-01", limit)
     .all()
@@ -464,7 +497,12 @@ async function handleSyncPull(request: Request, env: Env, user: User): Promise<R
 }
 
 // Sync push handler
-async function handleSyncPush(request: Request, env: Env, user: User, ctx: ExecutionContext): Promise<Response> {
+async function handleSyncPush(
+  request: Request,
+  env: Env,
+  user: User,
+  ctx: ExecutionContext,
+): Promise<Response> {
   const data = await request.json()
   const { documents, bookmarks, sessions, checkpoint } = data
 
@@ -477,13 +515,17 @@ async function handleSyncPush(request: Request, env: Env, user: User, ctx: Execu
         try {
           // Check for conflicts
           const existing = await env.DB.prepare(
-            "SELECT version FROM documents WHERE id = ? AND user_id = ?"
+            "SELECT version FROM documents WHERE id = ? AND user_id = ?",
           )
             .bind(doc.id, user.id)
             .first()
 
           if (existing && (existing.version as number) > doc.version) {
-            conflicts.push({ type: "document", id: doc.id, error: "Conflict: remote version is newer" })
+            conflicts.push({
+              type: "document",
+              id: doc.id,
+              error: "Conflict: remote version is newer",
+            })
             continue
           }
 
@@ -497,9 +539,19 @@ async function handleSyncPush(request: Request, env: Env, user: User, ctx: Execu
              source = excluded.source,
              updated_at = excluded.updated_at,
              version = excluded.version,
-             deleted_at = excluded.deleted_at`
+             deleted_at = excluded.deleted_at`,
           )
-            .bind(doc.id, user.id, doc.title, doc.wordCount, doc.source || null, doc.createdAt, doc.updatedAt, doc.version, doc.deletedAt || null)
+            .bind(
+              doc.id,
+              user.id,
+              doc.title,
+              doc.wordCount,
+              doc.source || null,
+              doc.createdAt,
+              doc.updatedAt,
+              doc.version,
+              doc.deletedAt || null,
+            )
             .run()
         } catch (error) {
           console.error("Failed to sync document:", doc.id, error)
@@ -508,7 +560,7 @@ async function handleSyncPush(request: Request, env: Env, user: User, ctx: Execu
       }
 
       // Similar processing for bookmarks and sessions...
-    })()
+    })(),
   )
 
   return jsonResponse({
