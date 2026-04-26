@@ -7,10 +7,8 @@ import {
   getSyncState,
   isSyncEnabled,
   setSyncEnabled,
-  type ReadwiseResult,
-  type SyncStats,
-  type ReadwiseApiProblem,
 } from "./api"
+import type { ReadwiseResult, SyncStats, ReadwiseApiProblem } from "./types"
 
 /**
  * React hook for Readwise sync management

@@ -9,9 +9,8 @@ import {
   clearApiToken,
   getSyncState,
   saveSyncState,
-  type ReadwiseSyncState,
-  READWISE_STORAGE_KEYS,
-} from "./api"
+} from "../api"
+import { READWISE_STORAGE_KEYS, type ReadwiseSyncState } from "../types"
 import { storage } from "@/utils/storage"
 
 // Mock storage

@@ -12,6 +12,7 @@ import { create, ApiResponse, ApisauceInstance } from "apisauce"
 
 import {
   DEFAULT_READWISE_CONFIG,
+  READWISE_STORAGE_KEYS,
   type ExportHighlightsRequest,
   type ExportHighlightsResponse,
   type ImportHighlightsResponse,
@@ -22,7 +23,6 @@ import {
   type ReadwiseSyncConfig,
   type ReadwiseSyncState,
   type SyncStats,
-  READWISE_STORAGE_KEYS,
   type ReadwiseImportedHighlight,
   type ReadwiseBook,
 } from "./types"
@@ -99,7 +99,7 @@ function getReadwiseProblem(response: ApiResponse<unknown>): ReadwiseApiProblem 
     if (response.status === 400) {
       return { kind: "bad-request", message: response.data?.toString() ?? "Bad request" }
     }
-    if (response.status >= 500) {
+    if (response.status && response.status >= 500) {
       return { kind: "server", message: `Server error: ${response.status}` }
     }
     if (response.problem === "NETWORK_ERROR") {
