@@ -2,6 +2,14 @@ export interface ConfigBaseProps {
   persistNavigation: "always" | "dev" | "prod" | "never"
   catchErrors: "always" | "dev" | "prod" | "never"
   exitRoutes: string[]
+  
+  // Cloud Sync Configuration
+  SUPABASE_URL: string
+  SUPABASE_ANON_KEY: string
+  CLOUDFLARE_API_URL: string
+  
+  // API Configuration
+  API_URL: string
 }
 
 export type PersistNavigationConfig = ConfigBaseProps["persistNavigation"]
@@ -21,6 +29,14 @@ const BaseConfig: ConfigBaseProps = {
    * is pressed while in that screen. Only affects Android.
    */
   exitRoutes: ["Welcome"],
+  
+  // Cloud Sync Configuration (override in dev/prod configs)
+  SUPABASE_URL: "",
+  SUPABASE_ANON_KEY: "",
+  CLOUDFLARE_API_URL: "https://api.reader.app",
+  
+  // API Configuration
+  API_URL: "https://api.reader.app",
 }
 
 export default BaseConfig

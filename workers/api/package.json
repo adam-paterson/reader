@@ -1,0 +1,19 @@
+{
+  "name": "readrrr-api-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for Readrrr API",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jose": "^5.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250426.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
+  }
+}
